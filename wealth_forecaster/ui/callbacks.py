@@ -5,6 +5,8 @@ import io
 import json
 from typing import Any, Dict, List
 
+import dash_bootstrap_components as dbc
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash import Input, Output, State, dcc, html, no_update
@@ -35,11 +37,47 @@ def _hex_to_rgba(hex_color: str, alpha: float) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+def _format_currency(value: float) -> str:
+    return f"${value:,.0f}"
+
+
+def _percentile_block(stats: Dict[str, float]) -> html.Div:
+    return html.Div(
+        [
+            html.Small(f"p90: {_format_currency(stats.get('p90', 0.0))}"),
+            html.Small(f"p50: {_format_currency(stats.get('p50', 0.0))}"),
+            html.Small(f"p10: {_format_currency(stats.get('p10', 0.0))}"),
+        ],
+        className="percentile-block",
+    )
+
+
+def _get_percentiles(metrics: Dict, *keys: str) -> Dict[str, float]:
+    cur: Dict | float | int = metrics
+    for key in keys:
+        if not isinstance(cur, dict):
+            return {"p10": 0.0, "p50": 0.0, "p90": 0.0}
+        cur = cur.get(key, {})
+    if not isinstance(cur, dict):
+        return {"p10": 0.0, "p50": 0.0, "p90": 0.0}
+    return {
+        "p10": float(cur.get("p10", 0.0)),
+        "p50": float(cur.get("p50", 0.0)),
+        "p90": float(cur.get("p90", 0.0)),
+    }
+
+
 def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
     cfg = canonicalize(default_config())
     cfg["start_date"] = values["start_date"]
     cfg["horizon_years"] = int(values["horizon_years"])
     cfg["seed_base"] = int(values["seed_base"])
+    runs = values.get("runs_per_scenario")
+    cfg["runs_per_scenario"] = max(100, int(runs) if runs is not None else 200)
+    vol_mult = values.get("volatility_multiplier")
+    cfg["volatility_multiplier"] = max(
+        0.01, float(vol_mult) if vol_mult is not None else 1.0
+    )
 
     cash = cfg["cash"]
     cash["initial"] = float(values["initial_capital"])
@@ -62,97 +100,6 @@ def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
 
 def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
     fig = go.Figure()
-    if df.empty:
-        fig.update_layout(
-            title=dict(
-                text=title,
-                font=dict(family="Courier New, monospace", size=20, color="#f9f871"),
-            ),
-            template="plotly_dark",
-            paper_bgcolor="#0d1026",
-            plot_bgcolor="#0d1026",
-            font=dict(family="Courier New, monospace", color="#f4f4f4"),
-            margin=dict(l=40, r=20, t=60, b=40),
-        )
-        fig.update_xaxes(gridcolor="#1f2f4a", zeroline=False, linecolor="#2a3352", showline=True)
-        fig.update_yaxes(
-            gridcolor="#1f2f4a",
-            zeroline=False,
-            linecolor="#2a3352",
-            showline=True,
-            tickprefix="$" if "value" in value_col else "",
-        )
-        return fig
-
-    for scenario, df_s in df.groupby("scenario"):
-        color = SCENARIO_COLORS.get(scenario, "#cccccc")
-        run_color = _hex_to_rgba(color, 0.3)
-        shade_color = _hex_to_rgba(color, 0.18)
-
-        df_sorted = df_s.sort_values(["run_id", "date"])
-        for run_id, df_run in df_sorted.groupby("run_id"):
-            hover = (
-                f"<b>{scenario.title()}</b><br>%{{x|%Y-%m}}<br>$%{{y:,.0f}}<extra></extra>"
-                if "value" in value_col
-                else f"<b>{scenario.title()}</b><br>%{{x|%Y-%m}}<br>%{{y:,.2f}}<extra></extra>"
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=df_run["date"],
-                    y=df_run[value_col],
-                    name=f"{scenario.title()} Run {run_id}",
-                    line=dict(width=0.8, color=run_color),
-                    mode="lines",
-                    opacity=0.25,
-                    hovertemplate=hover,
-                    legendgroup=scenario,
-                    showlegend=False,
-                )
-            )
-        grouped = df_sorted.groupby("date")[value_col]
-        mean_vals = grouped.mean()
-        min_vals = grouped.min()
-        max_vals = grouped.max()
-        fig.add_trace(
-            go.Scatter(
-                x=mean_vals.index,
-                y=max_vals,
-                line=dict(width=0),
-                hoverinfo="skip",
-                legendgroup=scenario,
-                showlegend=False,
-                name=f"{scenario.title()} High",
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=mean_vals.index,
-                y=min_vals,
-                fill="tonexty",
-                fillcolor=shade_color,
-                line=dict(width=0),
-                hoverinfo="skip",
-                name=f"{scenario.title()} Range",
-                showlegend=False,
-                legendgroup=scenario,
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=mean_vals.index,
-                y=mean_vals,
-                name=f"{scenario.title()} Avg",
-                line=dict(width=4, color=color),
-                mode="lines",
-                legendgroup=scenario,
-                hovertemplate=(
-                    f"<b>{scenario.title()} Avg</b><br>%{{x|%Y-%m}}<br>$%{{y:,.0f}}<extra></extra>"
-                    if "value" in value_col
-                    else f"<b>{scenario.title()} Avg</b><br>%{{x|%Y-%m}}<br>%{{y:,.2f}}<extra></extra>"
-                ),
-            )
-        )
-
     fig.update_layout(
         title=dict(
             text=title,
@@ -162,25 +109,9 @@ def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
         paper_bgcolor="#0d1026",
         plot_bgcolor="#0d1026",
         font=dict(family="Courier New, monospace", color="#f4f4f4"),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            bgcolor="rgba(13,16,38,0.7)",
-            bordercolor="#2a3352",
-            borderwidth=1,
-            font=dict(size=12),
-        ),
         margin=dict(l=40, r=20, t=60, b=40),
     )
-    fig.update_xaxes(
-        gridcolor="#1f2f4a",
-        zeroline=False,
-        linecolor="#2a3352",
-        showline=True,
-    )
+    fig.update_xaxes(gridcolor="#1f2f4a", zeroline=False, linecolor="#2a3352", showline=True)
     fig.update_yaxes(
         gridcolor="#1f2f4a",
         zeroline=False,
@@ -188,42 +119,211 @@ def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
         showline=True,
         tickprefix="$" if "value" in value_col else "",
     )
+
+    if df.empty:
+        return fig
+
+    df_sorted = df.sort_values("date")
+    for scenario, df_s in df_sorted.groupby("scenario"):
+        color = SCENARIO_COLORS.get(scenario, "#cccccc")
+        shade_color = _hex_to_rgba(color, 0.22)
+
+        grouped = df_s.groupby("date")[value_col]
+        p10 = grouped.quantile(0.1)
+        p50 = grouped.quantile(0.5)
+        p90 = grouped.quantile(0.9)
+        if p50.empty:
+            continue
+
+        custom = np.column_stack([p10.values, p90.values])
+
+        fig.add_trace(
+            go.Scatter(
+                x=p90.index,
+                y=p90.values,
+                line=dict(width=0),
+                hoverinfo="skip",
+                legendgroup=scenario,
+                showlegend=False,
+                name=f"{scenario.title()} p90",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=p10.index,
+                y=p10.values,
+                line=dict(width=0),
+                fill="tonexty",
+                fillcolor=shade_color,
+                hoverinfo="skip",
+                legendgroup=scenario,
+                showlegend=False,
+                name=f"{scenario.title()} p10",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=p50.index,
+                y=p50.values,
+                name=f"{scenario.title()} Median",
+                legendgroup=scenario,
+                line=dict(width=3, color=color),
+                customdata=custom,
+                hovertemplate=(
+                    f"<b>{scenario.title()}</b><br>%{{x|%Y-%m}}"
+                    "<br>p90: $%{customdata[1]:,.0f}"
+                    "<br>median: $%{y:,.0f}"
+                    "<br>p10: $%{customdata[0]:,.0f}<extra></extra>"
+                ),
+            )
+        )
+
     return fig
 
 
+
 def _build_summary_table(agg: Dict) -> List[html.Tr]:
+    scenarios = agg.get("scenarios", {})
     header = html.Thead(
         html.Tr(
             [
                 html.Th("Scenario"),
-                html.Th("Deposits"),
-                html.Th("End Nominal"),
-                html.Th("End Real"),
-                html.Th("Perpetuity (Nom)", title="Gross annual perpetuity"),
-                html.Th("Perpetuity Net"),
-                html.Th("Annuity (Nom)"),
-                html.Th("Annuity Net"),
+                html.Th("Total Pay-in"),
+                html.Th("Nominal Wealth"),
+                html.Th("Real Wealth"),
+                html.Th("Monthly Nominal Gross"),
+                html.Th("Monthly Nominal Net"),
+                html.Th("Monthly Real Gross"),
+                html.Th("Monthly Real Net"),
             ]
         )
     )
-    body_rows = []
-    for scenario, metrics in agg.get("scenarios", {}).items():
-        body_rows.append(
+    rows: List[html.Tr] = []
+    for scenario, metrics in scenarios.items():
+        rows.append(
             html.Tr(
                 [
                     html.Th(scenario.title()),
-                    html.Td(f"${metrics['deposits']:,.0f}"),
-                    html.Td(f"${metrics['end_value_nom']:,.0f}"),
-                    html.Td(f"${metrics['end_value_real']:,.0f}"),
-                    html.Td(f"${metrics['withdrawal_nom_perp']:,.0f}"),
-                    html.Td(f"${metrics['withdrawal_nom_perp_net']:,.0f}"),
-                    html.Td(f"${metrics['withdrawal_nom_ann']:,.0f}"),
-                    html.Td(f"${metrics['withdrawal_nom_ann_net']:,.0f}"),
-                ]
+                    html.Td(_format_currency(metrics.get("deposits_total", 0.0))),
+                    html.Td(_percentile_block(_get_percentiles(metrics, "end_nominal"))),
+                    html.Td(_percentile_block(_get_percentiles(metrics, "end_real"))),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(metrics, "perpetuity", "nominal", "gross")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(metrics, "perpetuity", "nominal", "net")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(metrics, "perpetuity", "real", "gross")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(metrics, "perpetuity", "real", "net")
+                        )
+                    ),
+                ],
+                className="summary-row",
             )
         )
-    body = html.Tbody(body_rows)
-    return [header, body]
+    overall = agg.get("overall", {})
+    if isinstance(overall, dict) and overall:
+        rows.append(
+            html.Tr(
+                [
+                    html.Th("Overall"),
+                    html.Td(_format_currency(overall.get("deposits_total", 0.0))),
+                    html.Td(_percentile_block(_get_percentiles(overall, "end_nominal"))),
+                    html.Td(_percentile_block(_get_percentiles(overall, "end_real"))),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(overall, "perpetuity", "nominal", "gross")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(overall, "perpetuity", "nominal", "net")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(overall, "perpetuity", "real", "gross")
+                        )
+                    ),
+                    html.Td(
+                        _percentile_block(
+                            _get_percentiles(overall, "perpetuity", "real", "net")
+                        )
+                    ),
+                ],
+                className="summary-row overall-row",
+            )
+        )
+    if not rows:
+        rows.append(
+            html.Tr(
+                [html.Td("Run the simulation to populate results.", colSpan=8)],
+                className="summary-row empty-row",
+            )
+        )
+    return [header, html.Tbody(rows)]
+
+
+def _build_scenario_details(agg: Dict) -> html.Component:
+    scenarios = agg.get("scenarios", {})
+    if not scenarios:
+        return html.Div("Run the simulation to view scenario details.", className="details-placeholder")
+    items = []
+    for scenario, metrics in scenarios.items():
+        rows = []
+        for label, key in [("Perpetuity", "perpetuity"), ("30-Year Annuity", "annuity")]:
+            rows.append(
+                html.Tr(
+                    [
+                        html.Th(label),
+                        html.Td(
+                            _percentile_block(_get_percentiles(metrics, key, "nominal", "gross"))
+                        ),
+                        html.Td(
+                            _percentile_block(_get_percentiles(metrics, key, "nominal", "net"))
+                        ),
+                        html.Td(
+                            _percentile_block(_get_percentiles(metrics, key, "real", "gross"))
+                        ),
+                        html.Td(
+                            _percentile_block(_get_percentiles(metrics, key, "real", "net"))
+                        ),
+                    ],
+                    className="detail-row",
+                )
+            )
+        table = dbc.Table(
+            [
+                html.Thead(
+                    html.Tr(
+                        [
+                            html.Th("Payout Type"),
+                            html.Th("Nominal Gross"),
+                            html.Th("Nominal Net"),
+                            html.Th("Real Gross"),
+                            html.Th("Real Net"),
+                        ]
+                    )
+                ),
+                html.Tbody(rows),
+            ],
+            bordered=True,
+            hover=True,
+            responsive=True,
+            className="neon-table table-sm table-dark",
+        )
+        items.append(dbc.AccordionItem(table, title=scenario.title()))
+    return dbc.Accordion(items, always_open=True, start_collapsed=False, className="scenario-accordion")
 
 
 def register_callbacks(app):
@@ -236,10 +336,12 @@ def register_callbacks(app):
         State("monthly-contribution", "value"),
         State("annual-increase", "value"),
         State("seed-base", "value"),
+        State("runs-per-scenario", "value"),
         State("ter", "value"),
         State("tax-rate", "value"),
         State("inflation-mean", "value"),
         State("inflation-sigma", "value"),
+        State("volatility-multiplier", "value"),
         State("inflation-stochastic", "value"),
         prevent_initial_call=True,
     )
@@ -251,10 +353,12 @@ def register_callbacks(app):
         monthly_contribution,
         annual_increase,
         seed_base,
+        runs_per_scenario,
         ter,
         tax_rate,
         inflation_mean,
         inflation_sigma,
+        volatility_multiplier,
         inflation_stochastic,
     ):
         values = {
@@ -264,10 +368,12 @@ def register_callbacks(app):
             "monthly_contribution": monthly_contribution,
             "annual_increase": annual_increase,
             "seed_base": seed_base,
+            "runs_per_scenario": runs_per_scenario,
             "ter": ter,
             "tax_rate": tax_rate,
             "inflation_mean": inflation_mean,
             "inflation_sigma": inflation_sigma,
+            "volatility_multiplier": volatility_multiplier,
             "inflation_stochastic": inflation_stochastic or [],
         }
         cfg = _config_from_inputs(values)
@@ -322,12 +428,17 @@ def register_callbacks(app):
         Output("real-graph", "figure"),
         Output("summary-table", "children"),
         Output("warning-banner", "children"),
+        Output("scenario-details", "children"),
         Input("results-store", "data"),
     )
     def update_outputs(data):
         if not data:
             empty_fig = _make_figure(pd.DataFrame(), "value_nom", "Nominal Wealth")
-            return empty_fig, empty_fig, [], None
+            details_placeholder = html.Div(
+                "Run the simulation to view scenario details.",
+                className="details-placeholder",
+            )
+            return empty_fig, empty_fig, [], None, details_placeholder
         paths = data.get("paths", [])
         if paths:
             df = pd.DataFrame(paths)
@@ -337,6 +448,7 @@ def register_callbacks(app):
         fig_nom = _make_figure(df, "value_nom", "Nominal Wealth Development")
         fig_real = _make_figure(df, "value_real", "Real Wealth Development")
         table_children = _build_summary_table(data.get("agg", {}))
+        details = _build_scenario_details(data.get("agg", {}))
         warnings = data.get("warnings", [])
         if warnings:
             banner = html.Div(
@@ -353,7 +465,7 @@ def register_callbacks(app):
             )
         else:
             banner = None
-        return fig_nom, fig_real, table_children, banner
+        return fig_nom, fig_real, table_children, banner, details
 
     @app.callback(
         Output("download-xlsx", "data"),

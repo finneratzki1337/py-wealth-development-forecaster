@@ -85,7 +85,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.5,
                             ),
                         ],
-                        md=6,
+                        md=4,
                     ),
                     dbc.Col(
                         [
@@ -98,7 +98,20 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=1,
                             ),
                         ],
-                        md=6,
+                        md=4,
+                    ),
+                    dbc.Col(
+                        [
+                            dbc.Label("Runs per Scenario"),
+                            dbc.Input(
+                                id="runs-per-scenario",
+                                type="number",
+                                value=cfg.get("runs_per_scenario", 200),
+                                min=100,
+                                step=10,
+                            ),
+                        ],
+                        md=4,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -178,6 +191,24 @@ def build_controls(cfg: dict) -> dbc.Col:
                 ],
                 className="g-2 compact-row align-items-center",
             ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dbc.Label("Volatility Multiplier"),
+                            dbc.Input(
+                                id="volatility-multiplier",
+                                type="number",
+                                value=cfg.get("volatility_multiplier", 1.0),
+                                min=0.1,
+                                step=0.1,
+                            ),
+                        ],
+                        md=6,
+                    ),
+                ],
+                className="g-2 compact-row",
+            ),
             html.Div(
                 dbc.Button(
                     "Run Simulation",
@@ -220,20 +251,30 @@ def serve_layout() -> dbc.Container:
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        dcc.Graph(
-                                            id="nominal-graph",
-                                            config={"displayModeBar": False},
-                                            className="neon-graph",
-                                            style={"height": "320px"},
+                                        dcc.Loading(
+                                            id="nominal-loading",
+                                            type="default",
+                                            className="graph-loading-wrapper",
+                                            children=dcc.Graph(
+                                                id="nominal-graph",
+                                                config={"displayModeBar": False},
+                                                className="neon-graph",
+                                                style={"height": "320px"},
+                                            ),
                                         ),
                                         md=12,
                                     ),
                                     dbc.Col(
-                                        dcc.Graph(
-                                            id="real-graph",
-                                            config={"displayModeBar": False},
-                                            className="neon-graph",
-                                            style={"height": "320px"},
+                                        dcc.Loading(
+                                            id="real-loading",
+                                            type="default",
+                                            className="graph-loading-wrapper",
+                                            children=dcc.Graph(
+                                                id="real-graph",
+                                                config={"displayModeBar": False},
+                                                className="neon-graph",
+                                                style={"height": "320px"},
+                                            ),
                                         ),
                                         md=12,
                                     ),
@@ -247,6 +288,8 @@ def serve_layout() -> dbc.Container:
                                 responsive=True,
                                 className="neon-table table-sm table-dark",
                             ),
+                            html.H3("Scenario Details", className="mt-4 section-title"),
+                            html.Div(id="scenario-details"),
                         ],
                         md=8,
                         className="graph-panel neon-panel p-3 rounded-3 h-100",
