@@ -10,7 +10,7 @@ In scope (v1):
 
 3 market scenarios (Optimistic/Moderate/Pessimistic) with blockwise annual drifts and per-scenario volatilities.
 
-Deterministic interactivity: 3 seeds per scenario (seed, seed×10, seed×100) ⇒ 9 paths total.
+Resilient sampling: 3 base seeds per scenario (seed, seed×10, seed×100); each base seed spawns 10 child simulations ⇒ 30 paths per scenario (90 total).
 
 Stochastic inflation (seed-based).
 
@@ -214,6 +214,10 @@ UI displays warnings as dismissible banner + icon near controls.
 8) UI/UX (Dash with Plotly, Python-first)
 
 Framework: Plotly Dash (no Node build step).
+Theme: dark neon "retro arcade" palette (deep charcoal background, teal/purple/pink accents, neon gridlines).
+Visual scale: tighter spacing (≤1rem gutters), slightly reduced font sizes (H1 ≈ 2rem, controls labels 0.95rem), button heights trimmed.
+Charts: focus on average traces with high-contrast neon colors; individual runs semi-transparent; min/max envelopes softly shaded.
+Components share alignment grid: graphs equal width stacked; summary table compact with dark headers.
 Layout (responsive, 2 columns):
 
 Left Sidebar (Controls):
@@ -327,9 +331,10 @@ def expand_to_monthly_factors(yearly_pi: np.ndarray) -> np.ndarray:
 # simulate.py
 def simulate_paths(cfg: dict, scenario_id: str) -> pd.DataFrame:
     """
-    Build 3 runs for the scenario using seeds {seed,10x,100x}.
+    Build 30 runs for the scenario.
+    For each base seed s ∈ {seed,10×,100×}, spawn 10 child RNGs via SeedSequence(s).
     Returns long DF with columns:
-    date, scenario, run_id, seed_used, value_nom, value_real, contrib_cum, cpi_cum, r_net
+    date, scenario, run_id, base_seed, child_index, seed_used, value_nom, value_real, contrib_cum, cpi_cum, r_net
     """
 
 # metrics.py
@@ -378,9 +383,9 @@ Annuity/Perpetuity formulas yield expected payments on known inputs.
 
 13) Acceptance Criteria
 
-Changing any input then clicking Run refreshes both charts and tables in <1s for v1 (9 paths × 360 months).
+Changing any input then clicking Run refreshes both charts and tables in <1.5s for v1 (90 paths × 360 months).
 
-9 path lines visible per chart, with thicker per-scenario average and min–max band.
+Charts emphasize per-scenario neon average lines, with soft-shaded best/worst envelopes and faint individual runs.
 
 XLSX export matches on-screen data; run hash present in file.
 

@@ -14,7 +14,7 @@ def build_controls(cfg: dict) -> dbc.Col:
 
     return dbc.Col(
         [
-            html.H2("Simulation Settings", className="mb-3"),
+            html.H2("Simulation Settings", className="panel-title mb-3 neon-accent"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -38,10 +38,10 @@ def build_controls(cfg: dict) -> dbc.Col:
                         md=6,
                     ),
                 ],
-                className="g-3",
+                className="g-2 compact-row",
             ),
             html.Hr(),
-            html.H4("Contributions"),
+            html.H3("Contributions", className="section-title mt-3"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -71,7 +71,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                         md=6,
                     ),
                 ],
-                className="g-3",
+                className="g-2 compact-row",
             ),
             dbc.Row(
                 [
@@ -101,10 +101,10 @@ def build_controls(cfg: dict) -> dbc.Col:
                         md=6,
                     ),
                 ],
-                className="g-3",
+                className="g-2 compact-row",
             ),
             html.Hr(),
-            html.H4("Economics"),
+            html.H3("Economics", className="section-title mt-3"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -146,7 +146,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                         md=4,
                     ),
                 ],
-                className="g-3",
+                className="g-2 compact-row",
             ),
             dbc.Row(
                 [
@@ -176,25 +176,27 @@ def build_controls(cfg: dict) -> dbc.Col:
                         md=6,
                     ),
                 ],
-                className="g-3",
+                className="g-2 compact-row align-items-center",
             ),
             html.Div(
                 dbc.Button(
                     "Run Simulation",
                     id="run-button",
                     color="primary",
-                    className="mt-3 w-100",
+                    size="sm",
+                    className="mt-3 w-100 neon-button primary-button",
                 )
             ),
             dbc.Button(
                 "Download XLSX",
                 id="export-button",
                 color="secondary",
-                className="mt-2 w-100",
+                size="sm",
+                className="mt-2 w-100 neon-button secondary-button",
             ),
         ],
         md=4,
-        className="bg-light p-3 rounded-3 h-100",
+        className="control-panel neon-panel p-3 rounded-3 h-100",
     )
 
 
@@ -210,29 +212,49 @@ def serve_layout() -> dbc.Container:
                     build_controls(cfg),
                     dbc.Col(
                         [
-                            html.H1("Wealth Development Forecaster", className="mb-3"),
+                            html.H1(
+                                "Wealth Development Forecaster",
+                                className="app-title mb-3 neon-accent",
+                            ),
                             html.Div(id="warning-banner"),
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        dcc.Graph(id="nominal-graph", config={"displayModeBar": False}),
+                                        dcc.Graph(
+                                            id="nominal-graph",
+                                            config={"displayModeBar": False},
+                                            className="neon-graph",
+                                            style={"height": "320px"},
+                                        ),
                                         md=12,
                                     ),
                                     dbc.Col(
-                                        dcc.Graph(id="real-graph", config={"displayModeBar": False}),
+                                        dcc.Graph(
+                                            id="real-graph",
+                                            config={"displayModeBar": False},
+                                            className="neon-graph",
+                                            style={"height": "320px"},
+                                        ),
                                         md=12,
                                     ),
                                 ]
                             ),
-                            html.H3("Scenario Summary", className="mt-4"),
-                            dbc.Table(id="summary-table", bordered=True, hover=True, responsive=True),
+                            html.H3("Scenario Summary", className="mt-4 section-title"),
+                            dbc.Table(
+                                id="summary-table",
+                                bordered=True,
+                                hover=True,
+                                responsive=True,
+                                className="neon-table table-sm table-dark",
+                            ),
                         ],
                         md=8,
+                        className="graph-panel neon-panel p-3 rounded-3 h-100",
                     ),
                 ],
-                className="g-4 mt-2",
+                className="g-3 mt-2 align-items-stretch",
             ),
         ],
         fluid=True,
-        className="pb-4",
+        className="app-shell pb-4",
     )

@@ -17,6 +17,24 @@ from ..simulate import simulate_paths
 from ..validate import validate_inputs
 
 
+SCENARIO_COLORS: Dict[str, str] = {
+    "optimistic": "#ff6ec7",
+    "moderate": "#2de2e6",
+    "pessimistic": "#f9f871",
+}
+
+
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """Convert a hex color (e.g., '#ff00aa') to an rgba string with the given alpha."""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6:
+        raise ValueError(f"Expected 6-digit hex color, got '{hex_color}'")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
     cfg = canonicalize(default_config())
     cfg["start_date"] = values["start_date"]
@@ -45,20 +63,50 @@ def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
 def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
     fig = go.Figure()
     if df.empty:
-        fig.update_layout(title=title, template="plotly_white")
+        fig.update_layout(
+            title=dict(
+                text=title,
+                font=dict(family="Courier New, monospace", size=20, color="#f9f871"),
+            ),
+            template="plotly_dark",
+            paper_bgcolor="#0d1026",
+            plot_bgcolor="#0d1026",
+            font=dict(family="Courier New, monospace", color="#f4f4f4"),
+            margin=dict(l=40, r=20, t=60, b=40),
+        )
+        fig.update_xaxes(gridcolor="#1f2f4a", zeroline=False, linecolor="#2a3352", showline=True)
+        fig.update_yaxes(
+            gridcolor="#1f2f4a",
+            zeroline=False,
+            linecolor="#2a3352",
+            showline=True,
+            tickprefix="$" if "value" in value_col else "",
+        )
         return fig
 
     for scenario, df_s in df.groupby("scenario"):
+        color = SCENARIO_COLORS.get(scenario, "#cccccc")
+        run_color = _hex_to_rgba(color, 0.3)
+        shade_color = _hex_to_rgba(color, 0.18)
+
         df_sorted = df_s.sort_values(["run_id", "date"])
         for run_id, df_run in df_sorted.groupby("run_id"):
+            hover = (
+                f"<b>{scenario.title()}</b><br>%{{x|%Y-%m}}<br>$%{{y:,.0f}}<extra></extra>"
+                if "value" in value_col
+                else f"<b>{scenario.title()}</b><br>%{{x|%Y-%m}}<br>%{{y:,.2f}}<extra></extra>"
+            )
             fig.add_trace(
                 go.Scatter(
                     x=df_run["date"],
                     y=df_run[value_col],
                     name=f"{scenario.title()} Run {run_id}",
-                    line=dict(width=1),
+                    line=dict(width=0.8, color=run_color),
                     mode="lines",
-                    hovertemplate="%{y:,.0f}<extra>%{x|%Y-%m}</extra>",
+                    opacity=0.25,
+                    hovertemplate=hover,
+                    legendgroup=scenario,
+                    showlegend=False,
                 )
             )
         grouped = df_sorted.groupby("date")[value_col]
@@ -71,8 +119,9 @@ def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
                 y=max_vals,
                 line=dict(width=0),
                 hoverinfo="skip",
+                legendgroup=scenario,
                 showlegend=False,
-                name=f"{scenario.title()} Max",
+                name=f"{scenario.title()} High",
             )
         )
         fig.add_trace(
@@ -80,11 +129,12 @@ def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
                 x=mean_vals.index,
                 y=min_vals,
                 fill="tonexty",
+                fillcolor=shade_color,
                 line=dict(width=0),
-                opacity=0.1,
                 hoverinfo="skip",
-                name=f"{scenario.title()} Min",
+                name=f"{scenario.title()} Range",
                 showlegend=False,
+                legendgroup=scenario,
             )
         )
         fig.add_trace(
@@ -92,17 +142,51 @@ def _make_figure(df: pd.DataFrame, value_col: str, title: str) -> go.Figure:
                 x=mean_vals.index,
                 y=mean_vals,
                 name=f"{scenario.title()} Avg",
-                line=dict(width=3),
+                line=dict(width=4, color=color),
                 mode="lines",
+                legendgroup=scenario,
+                hovertemplate=(
+                    f"<b>{scenario.title()} Avg</b><br>%{{x|%Y-%m}}<br>$%{{y:,.0f}}<extra></extra>"
+                    if "value" in value_col
+                    else f"<b>{scenario.title()} Avg</b><br>%{{x|%Y-%m}}<br>%{{y:,.2f}}<extra></extra>"
+                ),
             )
         )
 
     fig.update_layout(
-        title=title,
-        template="plotly_white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        title=dict(
+            text=title,
+            font=dict(family="Courier New, monospace", size=20, color="#f9f871"),
+        ),
+        template="plotly_dark",
+        paper_bgcolor="#0d1026",
+        plot_bgcolor="#0d1026",
+        font=dict(family="Courier New, monospace", color="#f4f4f4"),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            bgcolor="rgba(13,16,38,0.7)",
+            bordercolor="#2a3352",
+            borderwidth=1,
+            font=dict(size=12),
+        ),
         margin=dict(l=40, r=20, t=60, b=40),
-        yaxis_tickprefix="$",
+    )
+    fig.update_xaxes(
+        gridcolor="#1f2f4a",
+        zeroline=False,
+        linecolor="#2a3352",
+        showline=True,
+    )
+    fig.update_yaxes(
+        gridcolor="#1f2f4a",
+        zeroline=False,
+        linecolor="#2a3352",
+        showline=True,
+        tickprefix="$" if "value" in value_col else "",
     )
     return fig
 
@@ -259,12 +343,13 @@ def register_callbacks(app):
                 [
                     html.Div(
                         [
-                            html.H4("Validation Warnings", className="alert-heading"),
+                            html.H4("Validation Warnings", className="alert-title neon-accent"),
                             html.Ul([html.Li(w) for w in warnings]),
                         ],
-                        className="alert alert-warning",
+                        className="alert neon-warning",
                     )
-                ]
+                ],
+                className="warning-container",
             )
         else:
             banner = None

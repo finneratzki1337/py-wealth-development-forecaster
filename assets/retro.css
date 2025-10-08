@@ -1,0 +1,166 @@
+/* Retro neon dark theme for Wealth Forecaster */
+:root {
+  --bg-primary: #0d1026;
+  --bg-panel: rgba(15, 20, 46, 0.85);
+  --accent-pink: #ff6ec7;
+  --accent-cyan: #2de2e6;
+  --accent-yellow: #f9f871;
+  --text-muted: #94a3ff;
+}
+
+body {
+  background: radial-gradient(circle at top left, #1f2254 0%, #080b1c 60%, #040613 100%);
+  color: #f4f4f4;
+  font-family: "Courier New", monospace;
+}
+
+.app-shell {
+  padding-top: 1.5rem;
+}
+
+.neon-panel {
+  background: var(--bg-panel);
+  border: 1px solid rgba(79, 99, 255, 0.35);
+  box-shadow: 0 0 18px rgba(79, 99, 255, 0.25);
+}
+
+.panel-title,
+.section-title,
+.app-title {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-title {
+  font-size: 2rem;
+  text-shadow: 0 0 14px rgba(255, 110, 199, 0.65);
+}
+
+.section-title {
+  font-size: 1.05rem;
+  color: var(--accent-cyan);
+}
+
+.neon-accent {
+  color: var(--accent-pink) !important;
+}
+
+.control-panel label {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.compact-row > [class*="col"] {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.control-panel .form-control,
+.control-panel .form-check-input {
+  background-color: rgba(8, 12, 32, 0.9);
+  border-color: rgba(79, 99, 255, 0.5);
+  color: #f4f4f4;
+}
+
+.control-panel .form-check-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-panel .form-control:focus {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 0 0.2rem rgba(255, 110, 199, 0.2);
+}
+
+.control-panel hr {
+  border-top: 1px solid rgba(79, 99, 255, 0.4);
+  opacity: 0.6;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.neon-button {
+  border-radius: 0.4rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.neon-button.primary-button {
+  background: linear-gradient(90deg, #ff6ec7 0%, #2de2e6 100%);
+  border: none;
+  color: #0e132d;
+  font-weight: 600;
+}
+
+.neon-button.secondary-button {
+  background: transparent;
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.neon-button:hover,
+.neon-button:focus {
+  box-shadow: 0 0 14px rgba(255, 110, 199, 0.65);
+  transform: translateY(-1px);
+}
+
+.neon-graph {
+  border: 1px solid rgba(79, 99, 255, 0.25);
+  border-radius: 0.6rem;
+  background: rgba(13, 16, 38, 0.9);
+  padding: 0.75rem;
+}
+
+.neon-table {
+  background: rgba(13, 16, 38, 0.92);
+  border-color: rgba(79, 99, 255, 0.45);
+  color: #f4f4f4;
+}
+
+.neon-table thead th {
+  background: rgba(79, 99, 255, 0.25);
+  color: var(--accent-yellow);
+  border-color: rgba(79, 99, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.neon-table tbody tr {
+  border-color: rgba(79, 99, 255, 0.12);
+}
+
+.neon-table tbody tr:hover {
+  background: rgba(45, 226, 230, 0.12);
+}
+
+.alert.neon-warning {
+  background: rgba(249, 248, 113, 0.12);
+  border: 1px solid rgba(249, 248, 113, 0.55);
+  color: var(--accent-yellow);
+  box-shadow: 0 0 12px rgba(249, 248, 113, 0.25);
+}
+
+.alert-title {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.warning-container {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 991px) {
+  .graph-panel {
+    margin-top: 1rem;
+  }
+
+  .neon-graph {
+    height: 280px !important;
+  }
+}

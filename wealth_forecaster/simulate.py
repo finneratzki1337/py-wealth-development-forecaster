@@ -6,6 +6,7 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 import pandas as pd
+from numpy.random import SeedSequence
 
 from . import config as cfg_mod
 from . import inflation as infl_mod
@@ -120,7 +121,7 @@ def _inflation_factors(cfg: Dict, rng: np.random.Generator) -> np.ndarray:
 
 
 def simulate_paths(cfg: Dict, scenario_id: str) -> pd.DataFrame:
-    """Simulate three runs for a scenario."""
+    """Simulate 30 runs for a scenario using child seeds per base seed."""
     cfg = cfg_mod.canonicalize(cfg)
     scenario_cfg = cfg.get("scenarios", {}).get(scenario_id)
     if scenario_cfg is None:
@@ -132,48 +133,54 @@ def simulate_paths(cfg: Dict, scenario_id: str) -> pd.DataFrame:
     dates = contribution_series.index.to_timestamp(how="start")
 
     seed_base = int(cfg.get("seed_base", 1000))
-    seeds = [seed_base, seed_base * 10, seed_base * 100]
+    base_seeds = [seed_base, seed_base * 10, seed_base * 100]
+    scenario_offset = abs(hash(scenario_id)) % (2**16)
+
+    initial_capital = float(cfg.get("cash", {}).get("initial", 0.0))
+    contribs = contribution_series.to_numpy()
+    contrib_cumsum = initial_capital + contribution_series.cumsum().to_numpy()
 
     records = []
-    for run_id, seed in enumerate(seeds, start=1):
-        rng = np.random.default_rng(seed + hash(scenario_id) % 1000)
-        scenario_returns = _scenario_returns(cfg, scenario_cfg, rng)
-        inflation_rng = np.random.default_rng(rng.integers(0, 2**32 - 1))
-        monthly_inflation = _inflation_factors(cfg, inflation_rng)[:horizon_months]
-        cpi_cum = np.cumprod(monthly_inflation)
+    run_id = 1
+    for base_seed in base_seeds:
+        base_sequence = SeedSequence(base_seed + scenario_offset)
+        for child_index, child_sequence in enumerate(base_sequence.spawn(10), start=1):
+            state = child_sequence.generate_state(2, dtype=np.uint32)
+            path_seed = int(state[0])
+            inflation_seed = int(state[1])
 
-        value = float(cfg.get("cash", {}).get("initial", 0.0))
-        contrib_cum = value
-        values_nom = np.empty(horizon_months)
-        values_real = np.empty(horizon_months)
-        contribs = contribution_series.to_numpy()
-        r_nets = scenario_returns[:horizon_months]
-        for idx in range(horizon_months):
-            value = (value + contribs[idx]) * (1.0 + r_nets[idx])
-            contrib_cum += contribs[idx]
-            values_nom[idx] = value
-            values_real[idx] = value / cpi_cum[idx]
+            rng = np.random.default_rng(path_seed)
+            scenario_returns = _scenario_returns(cfg, scenario_cfg, rng)
+            inflation_rng = np.random.default_rng(inflation_seed)
+            monthly_inflation = _inflation_factors(cfg, inflation_rng)[:horizon_months]
+            cpi_cum = np.cumprod(monthly_inflation)
 
-        df_run = pd.DataFrame(
-            {
-                "date": dates,
-                "scenario": scenario_id,
-                "run_id": run_id,
-                "seed_used": seed,
-                "value_nom": values_nom,
-                "value_real": values_real,
-                "contrib_cum": contrib_cum - contribution_series.cumsum().to_numpy()[-1]
-                + contribution_series.cumsum().to_numpy(),
-                "cpi_cum": cpi_cum,
-                "r_net": r_nets,
-            }
-        )
-        # fix cumulative contributions column to reflect running sum of contributions + initial
-        df_run["contrib_cum"] = (
-            float(cfg.get("cash", {}).get("initial", 0.0))
-            + contribution_series.cumsum().to_numpy()
-        )
-        records.append(df_run)
+            value = initial_capital
+            values_nom = np.empty(horizon_months)
+            values_real = np.empty(horizon_months)
+            r_nets = scenario_returns[:horizon_months]
+            for idx in range(horizon_months):
+                value = (value + contribs[idx]) * (1.0 + r_nets[idx])
+                values_nom[idx] = value
+                values_real[idx] = value / cpi_cum[idx]
+
+            df_run = pd.DataFrame(
+                {
+                    "date": dates,
+                    "scenario": scenario_id,
+                    "run_id": run_id,
+                    "base_seed": base_seed,
+                    "child_index": child_index,
+                    "seed_used": path_seed,
+                    "value_nom": values_nom,
+                    "value_real": values_real,
+                    "contrib_cum": contrib_cumsum,
+                    "cpi_cum": cpi_cum,
+                    "r_net": r_nets,
+                }
+            )
+            records.append(df_run)
+            run_id += 1
 
     df = pd.concat(records, ignore_index=True)
     return df
