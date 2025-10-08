@@ -116,6 +116,42 @@ body {
   padding: 0.75rem;
 }
 
+.graph-loading-wrapper {
+  position: relative;
+}
+
+.graph-loading-wrapper .dash-spinner {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 6px;
+  border-radius: 0.4rem;
+  background: rgba(45, 226, 230, 0.25);
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(45, 226, 230, 0.35);
+}
+
+.graph-loading-wrapper .dash-spinner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, #2de2e6 50%, transparent 100%);
+  animation: loading-bar 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .neon-table {
   background: rgba(13, 16, 38, 0.92);
   border-color: rgba(79, 99, 255, 0.45);
@@ -136,6 +172,61 @@ body {
 
 .neon-table tbody tr:hover {
   background: rgba(45, 226, 230, 0.12);
+}
+
+.percentile-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.summary-row th {
+  color: var(--accent-yellow);
+  font-weight: 600;
+}
+
+.summary-row.overall-row {
+  background: rgba(255, 110, 199, 0.08);
+}
+
+.summary-row.empty-row td {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.details-placeholder {
+  color: var(--text-muted);
+  padding: 0.75rem;
+  background: rgba(79, 99, 255, 0.12);
+  border-radius: 0.5rem;
+  border: 1px dashed rgba(79, 99, 255, 0.35);
+}
+
+.scenario-accordion .accordion-item {
+  background: rgba(13, 16, 38, 0.85);
+  border: 1px solid rgba(79, 99, 255, 0.35);
+  color: #f4f4f4;
+}
+
+.scenario-accordion .accordion-button {
+  background: rgba(79, 99, 255, 0.2);
+  color: var(--accent-cyan);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.scenario-accordion .accordion-button:not(.collapsed) {
+  box-shadow: inset 0 -1px 0 rgba(79, 99, 255, 0.45);
+}
+
+.detail-row th {
+  color: var(--accent-yellow);
+  font-weight: 600;
+  width: 18%;
 }
 
 .alert.neon-warning {

@@ -1,27 +1,10 @@
 """Aggregation metrics for simulated paths."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, Iterable
 
 import numpy as np
 import pandas as pd
-
-
-@dataclass
-class ScenarioSummary:
-    deposits: float
-    returns: float
-    end_value_nom: float
-    end_value_real: float
-    withdrawal_nom_perp: float
-    withdrawal_nom_perp_net: float
-    withdrawal_real_perp: float
-    withdrawal_real_perp_net: float
-    withdrawal_nom_ann: float
-    withdrawal_nom_ann_net: float
-    withdrawal_real_ann: float
-    withdrawal_real_ann_net: float
 
 
 def _geometric_mean(series: Iterable[float]) -> float:
@@ -74,17 +57,60 @@ def _payment_annuity(value: float, monthly_rate: float, months: int) -> float:
     return value * factor
 
 
+def _percentiles(series: Iterable[float]) -> Dict[str, float]:
+    values = list(series)
+    if not values:
+        return {"p10": 0.0, "p50": 0.0, "p90": 0.0}
+    percentiles = np.nanpercentile(values, [10, 50, 90])
+    return {
+        "p10": float(percentiles[0]),
+        "p50": float(percentiles[1]),
+        "p90": float(percentiles[2]),
+    }
+
+
+def _build_summary(stats: pd.DataFrame, deposits: float) -> Dict:
+    return {
+        "deposits_total": float(deposits),
+        "end_nominal": _percentiles(stats["end_nominal"]),
+        "end_real": _percentiles(stats["end_real"]),
+        "perpetuity": {
+            "nominal": {
+                "gross": _percentiles(stats["perp_nominal_gross"]),
+                "net": _percentiles(stats["perp_nominal_net"]),
+            },
+            "real": {
+                "gross": _percentiles(stats["perp_real_gross"]),
+                "net": _percentiles(stats["perp_real_net"]),
+            },
+        },
+        "annuity": {
+            "nominal": {
+                "gross": _percentiles(stats["ann_nominal_gross"]),
+                "net": _percentiles(stats["ann_nominal_net"]),
+            },
+            "real": {
+                "gross": _percentiles(stats["ann_real_gross"]),
+                "net": _percentiles(stats["ann_real_net"]),
+            },
+        },
+    }
+
+
 def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict:
-    summaries: Dict[str, ScenarioSummary] = {}
+    scenario_summaries: Dict[str, Dict] = {}
+    scenario_stats_frames: list[pd.DataFrame] = []
+
     n_months = df_paths.groupby("date").ngroups
     ann_months = max(1, n_months)
+    tax_rate = float(tax)
 
     for scenario, df_s in df_paths.groupby("scenario"):
         df_sorted = df_s.sort_values(["run_id", "date"])
-        end_nom = df_sorted.groupby("run_id")[["value_nom"]].tail(1)["value_nom"].mean()
-        end_real = df_sorted.groupby("run_id")[["value_real"]].tail(1)["value_real"].mean()
-        deposits = df_sorted.groupby("run_id")[["contrib_cum"]].tail(1)["contrib_cum"].mean()
-        returns_value = end_nom - deposits
+        grouped = df_sorted.groupby("run_id")
+        end_nom = grouped["value_nom"].last()
+        end_real = grouped["value_real"].last()
+        deposits = grouped["contrib_cum"].last()
 
         monthly_nom, monthly_real = _estimate_rates(df_sorted)
 
@@ -106,81 +132,122 @@ def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict
         monthly_nom_ann = (1 + r_nom_ann) ** (1 / 12) - 1
         monthly_real_ann = (1 + r_real_ann) ** (1 / 12) - 1
 
-        perp_nominal = _payment_perpetuity(end_nom, monthly_nom_perp) * 12
-        perp_real = _payment_perpetuity(end_real, monthly_real_perp) * 12
-        ann_nominal = _payment_annuity(end_nom, monthly_nom_ann, ann_months) * 12
-        ann_real = _payment_annuity(end_real, monthly_real_ann, ann_months) * 12
-
-        tax_rate = float(tax)
-        perp_nominal_net = perp_nominal * (1 - tax_rate)
-        perp_real_net = perp_real * (1 - tax_rate)
-        ann_nominal_net = ann_nominal * (1 - tax_rate)
-        ann_real_net = ann_real * (1 - tax_rate)
-
-        summaries[scenario] = ScenarioSummary(
-            deposits=float(deposits),
-            returns=float(returns_value),
-            end_value_nom=float(end_nom),
-            end_value_real=float(end_real),
-            withdrawal_nom_perp=float(perp_nominal),
-            withdrawal_nom_perp_net=float(perp_nominal_net),
-            withdrawal_real_perp=float(perp_real),
-            withdrawal_real_perp_net=float(perp_real_net),
-            withdrawal_nom_ann=float(ann_nominal),
-            withdrawal_nom_ann_net=float(ann_nominal_net),
-            withdrawal_real_ann=float(ann_real),
-            withdrawal_real_ann_net=float(ann_real_net),
+        perp_nominal = end_nom.to_numpy() * monthly_nom_perp
+        perp_real = end_real.to_numpy() * monthly_real_perp
+        ann_nominal = np.array(
+            [_payment_annuity(val, monthly_nom_ann, ann_months) for val in end_nom]
+        )
+        ann_real = np.array(
+            [_payment_annuity(val, monthly_real_ann, ann_months) for val in end_real]
         )
 
-    if summaries:
-        overall = {
-            "deposits": float(np.mean([s.deposits for s in summaries.values()])),
-            "returns": float(np.mean([s.returns for s in summaries.values()])),
-            "end_value_nom": float(np.mean([s.end_value_nom for s in summaries.values()])),
-            "end_value_real": float(np.mean([s.end_value_real for s in summaries.values()])),
-            "withdrawal_nom_perp": float(
-                np.mean([s.withdrawal_nom_perp for s in summaries.values()])
-            ),
-            "withdrawal_nom_perp_net": float(
-                np.mean([s.withdrawal_nom_perp_net for s in summaries.values()])
-            ),
-            "withdrawal_real_perp": float(
-                np.mean([s.withdrawal_real_perp for s in summaries.values()])
-            ),
-            "withdrawal_real_perp_net": float(
-                np.mean([s.withdrawal_real_perp_net for s in summaries.values()])
-            ),
-            "withdrawal_nom_ann": float(
-                np.mean([s.withdrawal_nom_ann for s in summaries.values()])
-            ),
-            "withdrawal_nom_ann_net": float(
-                np.mean([s.withdrawal_nom_ann_net for s in summaries.values()])
-            ),
-            "withdrawal_real_ann": float(
-                np.mean([s.withdrawal_real_ann for s in summaries.values()])
-            ),
-            "withdrawal_real_ann_net": float(
-                np.mean([s.withdrawal_real_ann_net for s in summaries.values()])
-            ),
-        }
+        stats = pd.DataFrame(
+            {
+                "deposits": deposits.to_numpy(),
+                "end_nominal": end_nom.to_numpy(),
+                "end_real": end_real.to_numpy(),
+                "perp_nominal_gross": perp_nominal,
+                "perp_nominal_net": perp_nominal * (1 - tax_rate),
+                "perp_real_gross": perp_real,
+                "perp_real_net": perp_real * (1 - tax_rate),
+                "ann_nominal_gross": ann_nominal,
+                "ann_nominal_net": ann_nominal * (1 - tax_rate),
+                "ann_real_gross": ann_real,
+                "ann_real_net": ann_real * (1 - tax_rate),
+            }
+        )
+        stats["scenario"] = scenario
+        scenario_stats_frames.append(stats)
+        avg_deposits = float(deposits.mean())
+        summary = _build_summary(stats, avg_deposits)
+        avg_end_nom = float(end_nom.mean())
+        avg_end_real = float(end_real.mean())
+        legacy_returns = avg_end_nom - avg_deposits
+        summary.update(
+            {
+                "deposits": avg_deposits,
+                "returns": float(legacy_returns),
+                "end_value_nom": avg_end_nom,
+                "end_value_real": avg_end_real,
+                "withdrawal_nom_perp": float(np.mean(perp_nominal) * 12),
+                "withdrawal_nom_perp_net": float(np.mean(perp_nominal * (1 - tax_rate)) * 12),
+                "withdrawal_real_perp": float(np.mean(perp_real) * 12),
+                "withdrawal_real_perp_net": float(np.mean(perp_real * (1 - tax_rate)) * 12),
+                "withdrawal_nom_ann": float(np.mean(ann_nominal) * 12),
+                "withdrawal_nom_ann_net": float(np.mean(ann_nominal * (1 - tax_rate)) * 12),
+                "withdrawal_real_ann": float(np.mean(ann_real) * 12),
+                "withdrawal_real_ann_net": float(np.mean(ann_real * (1 - tax_rate)) * 12),
+            }
+        )
+        scenario_summaries[scenario] = summary
+
+    if scenario_stats_frames:
+        combined = pd.concat(scenario_stats_frames, ignore_index=True)
+        overall = _build_summary(combined, combined["deposits"].mean())
+        avg_dep = float(combined["deposits"].mean())
+        avg_end_nom = float(combined["end_nominal"].mean())
+        avg_end_real = float(combined["end_real"].mean())
+        overall.update(
+            {
+                "deposits": avg_dep,
+                "returns": float(avg_end_nom - avg_dep),
+                "end_value_nom": avg_end_nom,
+                "end_value_real": avg_end_real,
+                "withdrawal_nom_perp": float(combined["perp_nominal_gross"].mean() * 12),
+                "withdrawal_nom_perp_net": float(combined["perp_nominal_net"].mean() * 12),
+                "withdrawal_real_perp": float(combined["perp_real_gross"].mean() * 12),
+                "withdrawal_real_perp_net": float(combined["perp_real_net"].mean() * 12),
+                "withdrawal_nom_ann": float(combined["ann_nominal_gross"].mean() * 12),
+                "withdrawal_nom_ann_net": float(combined["ann_nominal_net"].mean() * 12),
+                "withdrawal_real_ann": float(combined["ann_real_gross"].mean() * 12),
+                "withdrawal_real_ann_net": float(combined["ann_real_net"].mean() * 12),
+            }
+        )
     else:
         overall = {
-            "deposits": 0.0,
-            "returns": 0.0,
-            "end_value_nom": 0.0,
-            "end_value_real": 0.0,
-            "withdrawal_nom_perp": 0.0,
-            "withdrawal_nom_perp_net": 0.0,
-            "withdrawal_real_perp": 0.0,
-            "withdrawal_real_perp_net": 0.0,
-            "withdrawal_nom_ann": 0.0,
-            "withdrawal_nom_ann_net": 0.0,
-            "withdrawal_real_ann": 0.0,
-            "withdrawal_real_ann_net": 0.0,
+            "deposits_total": 0.0,
+            "end_nominal": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+            "end_real": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+            "perpetuity": {
+                "nominal": {
+                    "gross": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                    "net": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                },
+                "real": {
+                    "gross": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                    "net": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                },
+            },
+            "annuity": {
+                "nominal": {
+                    "gross": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                    "net": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                },
+                "real": {
+                    "gross": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                    "net": {"p10": 0.0, "p50": 0.0, "p90": 0.0},
+                },
+            },
         }
+        overall.update(
+            {
+                "deposits": 0.0,
+                "returns": 0.0,
+                "end_value_nom": 0.0,
+                "end_value_real": 0.0,
+                "withdrawal_nom_perp": 0.0,
+                "withdrawal_nom_perp_net": 0.0,
+                "withdrawal_real_perp": 0.0,
+                "withdrawal_real_perp_net": 0.0,
+                "withdrawal_nom_ann": 0.0,
+                "withdrawal_nom_ann_net": 0.0,
+                "withdrawal_real_ann": 0.0,
+                "withdrawal_real_ann_net": 0.0,
+            }
+        )
 
     return {
-        "scenarios": {k: vars(v) for k, v in summaries.items()},
+        "scenarios": scenario_summaries,
         "overall": overall,
     }
 

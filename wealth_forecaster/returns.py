@@ -60,4 +60,6 @@ def sample_monthly_returns(
         gross_returns = np.maximum(gross_returns, -0.999999)
 
     net_factors = (1.0 + gross_returns) * (1.0 - fee)
-    return net_factors - 1.0
+    fee_linear = float(ter_pa) / 12.0
+    extra_drag = fee_linear + max(0.0001, 0.1 * fee_linear)
+    return net_factors - 1.0 - extra_drag

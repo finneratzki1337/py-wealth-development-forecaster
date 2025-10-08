@@ -10,6 +10,14 @@ def validate_inputs(cfg: Dict) -> List[str]:
     if cfg.get("horizon_years", 0) <= 0:
         warnings.append("Horizon must be positive.")
 
+    runs = int(cfg.get("runs_per_scenario", 0))
+    if runs < 100:
+        warnings.append("Runs per scenario must be at least 100; adjusted automatically.")
+
+    vol_mult = float(cfg.get("volatility_multiplier", 1.0))
+    if vol_mult <= 0:
+        warnings.append("Volatility multiplier should be positive.")
+
     cash = cfg.get("cash", {})
     if cash.get("monthly", 0) < 0:
         warnings.append("Monthly contribution cannot be negative.")

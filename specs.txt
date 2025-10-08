@@ -1,4 +1,4 @@
-Wealth-Development Prediction — Technical Spec (v1)
+Wealth-Development Prediction — Technical Spec (v1.1)
 
 Purpose: Interactive, reproducible simulator for long-horizon wealth development with scenario-based return drifts, stochastic inflation, fees, and tax-aware withdrawal metrics. Built “Python-first” with interactive Plotly visuals.
 
@@ -10,7 +10,7 @@ In scope (v1):
 
 3 market scenarios (Optimistic/Moderate/Pessimistic) with blockwise annual drifts and per-scenario volatilities.
 
-Resilient sampling: 3 base seeds per scenario (seed, seed×10, seed×100); each base seed spawns 10 child simulations ⇒ 30 paths per scenario (90 total).
+Resilient sampling: configurable Monte-Carlo size per scenario (default 200 runs, minimum 100). Seeds are deterministically derived from seed_base to populate the requested count.
 
 Stochastic inflation (seed-based).
 
@@ -31,6 +31,7 @@ Country-specific tax lots / FIFO / partial exemptions.
 2) Inputs & Defaults
 {
   "seed_base": 1000,
+  "runs_per_scenario": 200,        // UI enforces ≥100
   "horizon_years": 30,
   "cash": {
     "initial": 0.0,
@@ -53,6 +54,7 @@ Country-specific tax lots / FIFO / partial exemptions.
     "moderate":     { "mu_pa_blocks":[0.05,0.06,0.06,0.05,0.05,0.05], "sigma_pa": 0.14 },
     "pessimistic":  { "mu_pa_blocks":[0.00,0.02,0.03,0.02,0.02,0.02], "sigma_pa": 0.20 }
   },
+  "volatility_multiplier": 1.0,    // multiplies all scenario sigmas
   "return_model": {
     "mean_type": "arithmetic",      // "arithmetic" (default) or "geometric"
     "distribution": "normal_arith", // "normal_arith" (default) or "lognormal_match"
@@ -145,12 +147,12 @@ All tax treatments are explicit simplifications in v1.
 
 4) Engine & Reproducibility
 
-Seeds per scenario: {seed_base, 10×, 100×} ⇒ 3 runs per scenario.
+Seeds per scenario: derive run_count distinct seeds from SeedSequence(seed_base + scenario_offset).
 
 RNG: numpy.random.Generator(PCG64(seed)).
 Derive sub-streams for inflation vs returns (e.g., SeedSequence(seed).spawn(2)).
 
-Run metadata: store {"seed_base", "numpy_version", "scenario_table_version", "code_version", "timestamp"}.
+Run metadata: store {"seed_base", "runs_per_scenario", "numpy_version", "scenario_table_version", "code_version", "timestamp"}.
 
 5) Algorithm (high-level)
 
@@ -158,20 +160,21 @@ Build monthly schedule (dates, block indices, January flags).
 
 For each scenario s:
 
-For each run r ∈ {1,2,3} with seed {seed,10×,100×}:
+Spawn `runs_per_scenario` tasks (parallelized with ProcessPoolExecutor) each using its derived seed.
 
-Sample yearly inflations, expand to monthly CPI factors.
+Each task:
 
-For each block, compute monthly (μ_m, σ_m) and sample monthly returns (per §3.2).
+• Samples yearly inflations, expand to monthly CPI factors.
 
-Simulate wealth path with contributions and fees (per §3.4).
+• For each block, compute monthly (μ_m, σ_m × volatility_multiplier) and sample monthly returns (per §3.2).
 
-Deflate to real terms via CPI (per §3.5).
+• Simulates wealth path with contributions and fees (per §3.4).
 
-Track cumulative contributions and CPI.
+• Deflates to real terms via CPI (per §3.5).
 
-Aggregate per scenario: mean of the 3 paths (nominal & real).
-Also compute min/max envelope (confidence band proxy for n=3).
+• Tracks cumulative contributions and CPI.
+
+Aggregate per scenario using vectorized percentile statistics: compute 10th/50th/90th percentiles for wealth paths and payout metrics. Store total contributions, end-value percentiles (nominal & real), and payout percentiles.
 
 Compute metrics: deposits, returns (End − deposits), end values (nom & real), perpetuity and annuity payments (gross/net).
 Optional: target-hit flags per path for target end value or target real income (n=3; show sample-size note).
@@ -181,15 +184,27 @@ Export (XLSX), hash run.
 6) Data Structures
 6.1 In-memory frames
 
-Paths DF (long):
+Paths DF (long, optional for debug/export only; plots use percentile summary):
 
 date | scenario | run_id | seed_used | value_nom | value_real | contrib_cum | cpi_cum | r_net
 
 
-Aggregates (per scenario):
+Percentile envelopes (per scenario, per month):
 
-end_nom_mean, end_real_mean, deposits_nom, returns_nom, deposits_real, returns_real,
-pmt_perp_nom_brutto/net, pmt_perp_real_brutto/net, pmt_ann30_nom_brutto/net, pmt_ann30_real_brutto/net
+date | scenario | pct | value_nom | value_real
+
+
+Aggregates (per scenario, stored in nested dict):
+
+deposits_total,
+end_nom_p10/p50/p90,
+end_real_p10/p50/p90,
+pmt_nom_taxed_p10/p50/p90,
+pmt_nom_gross_p10/p50/p90,
+pmt_real_taxed_p10/p50/p90,
+pmt_real_gross_p10/p50/p90,
+avg_monthly_nominal_payout_p10/p50/p90,
+avg_monthly_real_payout_p10/p50/p90
 
 6.2 Hash (reproducibility)
 
@@ -228,6 +243,8 @@ Simulation:
 
 seed_base (int)
 
+runs_per_scenario (int, min 100)
+
 Horizon years (fixed 30 in v1; disabled input)
 
 Cash:
@@ -248,6 +265,8 @@ TER % p.a. (default 0.30%)
 
 Tax % (default 25%)
 
+Volatility multiplier (slider/input, 0.5–2.0 default 1.0)
+
 Withdrawals:
 
 Perpetuity r_nom/r_real (optional override)
@@ -260,19 +279,27 @@ Right Content (Tabs):
 
 Nominal Chart:
 
-9 semi-transparent lines (3 per scenario), average line per scenario (bold).
+Single bold line per scenario showing median (p50) wealth.
 
-End markers; legend toggles per scenario; hover shows end values.
+Shaded band per scenario = 10th–90th percentile envelope.
 
-Shaded band per scenario = min..max of its 3 runs (labeled “n=3 band”).
+Legend toggles scenarios; hover shows p10/p50/p90 values for the hovered month.
+
+Loading overlay bar spans chart area while simulations execute.
 
 Real Chart: same as nominal, deflated.
 
 Tables:
 
-Totals: deposits vs returns; end values nominal/real (per scenario mean) + overall mean across 9 runs.
+Summary table (wider layout) per scenario + overall row with columns:
 
-Withdrawal table: perpetuity and 30-year annuity (gross/net; nom/real).
+• Total pay-in (sum of contributions)
+• Nominal wealth p10/p50/p90
+• Real wealth p10/p50/p90
+• Monthly payout nominal (gross & after-tax) p10/p50/p90
+• Monthly payout real (gross & after-tax) p10/p50/p90
+
+Detailed scenario tables (accordion per scenario) listing percentile stats for perpetuity and 30-year annuity style payouts, including 90%/10% bounds of average monthly payouts.
 
 Run Info & Warnings:
 

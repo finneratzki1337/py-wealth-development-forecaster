@@ -1,6 +1,7 @@
 """Simulation engine for wealth development."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
 
@@ -61,14 +62,16 @@ def _build_contribution_series(cfg: Dict) -> pd.Series:
     return series
 
 
-def _scenario_blocks(scenario_cfg: Dict) -> Iterable[tuple[float, float]]:
+def _scenario_blocks(scenario_cfg: Dict, sigma_scale: float) -> Iterable[tuple[float, float]]:
     mu_blocks = scenario_cfg.get("mu_pa_blocks", [])
-    sigma = float(scenario_cfg.get("sigma_pa", 0.0))
+    sigma = float(scenario_cfg.get("sigma_pa", 0.0)) * float(sigma_scale)
     for mu in mu_blocks:
         yield float(mu), sigma
 
 
-def _scenario_returns(cfg: Dict, scenario_cfg: Dict, rng: np.random.Generator) -> np.ndarray:
+def _scenario_returns(
+    cfg: Dict, scenario_cfg: Dict, rng: np.random.Generator, sigma_scale: float
+) -> np.ndarray:
     mean_type = cfg.get("return_model", {}).get("mean_type", "arithmetic")
     distribution = cfg.get("return_model", {}).get("distribution", "normal_arith")
     truncate = cfg.get("return_model", {}).get("truncate_at_minus_100", True)
@@ -76,7 +79,7 @@ def _scenario_returns(cfg: Dict, scenario_cfg: Dict, rng: np.random.Generator) -
 
     horizon_months = int(cfg["horizon_years"]) * 12
     returns: List[float] = []
-    for mu_y, sigma_y in _scenario_blocks(scenario_cfg):
+    for mu_y, sigma_y in _scenario_blocks(scenario_cfg, sigma_scale):
         mu_m, sigma_m = ret_mod.monthly_params(mu_y, sigma_y, mean_type)
         block_months = min(60, horizon_months - len(returns))
         if block_months <= 0:
@@ -93,7 +96,7 @@ def _scenario_returns(cfg: Dict, scenario_cfg: Dict, rng: np.random.Generator) -
         returns.extend(block_rets.tolist())
     if len(returns) < horizon_months:
         # Extend using final block parameters
-        mu_y, sigma_y = list(_scenario_blocks(scenario_cfg))[-1]
+        mu_y, sigma_y = list(_scenario_blocks(scenario_cfg, sigma_scale))[-1]
         mu_m, sigma_m = ret_mod.monthly_params(mu_y, sigma_y, mean_type)
         missing = horizon_months - len(returns)
         returns.extend(
@@ -120,8 +123,53 @@ def _inflation_factors(cfg: Dict, rng: np.random.Generator) -> np.ndarray:
     return monthly
 
 
+def _simulate_single_run(
+    run_id: int,
+    path_seed: int,
+    inflation_seed: int,
+    scenario_id: str,
+    cfg: Dict,
+    scenario_cfg: Dict,
+    contribs: np.ndarray,
+    contrib_cumsum: np.ndarray,
+    dates: pd.DatetimeIndex,
+    initial_capital: float,
+    sigma_scale: float,
+) -> pd.DataFrame:
+    rng = np.random.default_rng(path_seed)
+    scenario_returns = _scenario_returns(cfg, scenario_cfg, rng, sigma_scale)
+    horizon_months = len(contribs)
+    inflation_rng = np.random.default_rng(inflation_seed)
+    monthly_inflation = _inflation_factors(cfg, inflation_rng)[:horizon_months]
+    cpi_cum = np.cumprod(monthly_inflation)
+
+    value = initial_capital
+    values_nom = np.empty(horizon_months)
+    values_real = np.empty(horizon_months)
+    r_nets = scenario_returns[:horizon_months]
+    for idx in range(horizon_months):
+        value = (value + contribs[idx]) * (1.0 + r_nets[idx])
+        values_nom[idx] = value
+        values_real[idx] = value / cpi_cum[idx]
+
+    df_run = pd.DataFrame(
+        {
+            "date": dates,
+            "scenario": scenario_id,
+            "run_id": run_id,
+            "seed_used": path_seed,
+            "value_nom": values_nom,
+            "value_real": values_real,
+            "contrib_cum": contrib_cumsum,
+            "cpi_cum": cpi_cum,
+            "r_net": r_nets,
+        }
+    )
+    return df_run
+
+
 def simulate_paths(cfg: Dict, scenario_id: str) -> pd.DataFrame:
-    """Simulate 30 runs for a scenario using child seeds per base seed."""
+    """Simulate runs for a scenario using deterministic parallel seeds."""
     cfg = cfg_mod.canonicalize(cfg)
     scenario_cfg = cfg.get("scenarios", {}).get(scenario_id)
     if scenario_cfg is None:
@@ -133,54 +181,46 @@ def simulate_paths(cfg: Dict, scenario_id: str) -> pd.DataFrame:
     dates = contribution_series.index.to_timestamp(how="start")
 
     seed_base = int(cfg.get("seed_base", 1000))
-    base_seeds = [seed_base, seed_base * 10, seed_base * 100]
     scenario_offset = abs(hash(scenario_id)) % (2**16)
+    runs_per_scenario = max(100, int(cfg.get("runs_per_scenario", 100)))
 
     initial_capital = float(cfg.get("cash", {}).get("initial", 0.0))
     contribs = contribution_series.to_numpy()
     contrib_cumsum = initial_capital + contribution_series.cumsum().to_numpy()
 
-    records = []
-    run_id = 1
-    for base_seed in base_seeds:
-        base_sequence = SeedSequence(base_seed + scenario_offset)
-        for child_index, child_sequence in enumerate(base_sequence.spawn(10), start=1):
-            state = child_sequence.generate_state(2, dtype=np.uint32)
-            path_seed = int(state[0])
-            inflation_seed = int(state[1])
+    base_sequence = SeedSequence(seed_base + scenario_offset)
+    child_sequences = base_sequence.spawn(runs_per_scenario)
+    seeds: List[tuple[int, int, int]] = []
+    for run_idx, child_sequence in enumerate(child_sequences, start=1):
+        state = child_sequence.generate_state(2, dtype=np.uint32)
+        seeds.append((run_idx, int(state[0]), int(state[1])))
 
-            rng = np.random.default_rng(path_seed)
-            scenario_returns = _scenario_returns(cfg, scenario_cfg, rng)
-            inflation_rng = np.random.default_rng(inflation_seed)
-            monthly_inflation = _inflation_factors(cfg, inflation_rng)[:horizon_months]
-            cpi_cum = np.cumprod(monthly_inflation)
+    sigma_scale = float(cfg.get("volatility_multiplier", 1.0))
 
-            value = initial_capital
-            values_nom = np.empty(horizon_months)
-            values_real = np.empty(horizon_months)
-            r_nets = scenario_returns[:horizon_months]
-            for idx in range(horizon_months):
-                value = (value + contribs[idx]) * (1.0 + r_nets[idx])
-                values_nom[idx] = value
-                values_real[idx] = value / cpi_cum[idx]
+    def _task(args: tuple[int, int, int]) -> pd.DataFrame:
+        run_id, path_seed, inflation_seed = args
+        return _simulate_single_run(
+            run_id,
+            path_seed,
+            inflation_seed,
+            scenario_id,
+            cfg,
+            scenario_cfg,
+            contribs,
+            contrib_cumsum,
+            dates,
+            initial_capital,
+            sigma_scale,
+        )
 
-            df_run = pd.DataFrame(
-                {
-                    "date": dates,
-                    "scenario": scenario_id,
-                    "run_id": run_id,
-                    "base_seed": base_seed,
-                    "child_index": child_index,
-                    "seed_used": path_seed,
-                    "value_nom": values_nom,
-                    "value_real": values_real,
-                    "contrib_cum": contrib_cumsum,
-                    "cpi_cum": cpi_cum,
-                    "r_net": r_nets,
-                }
-            )
-            records.append(df_run)
-            run_id += 1
+    if runs_per_scenario == 0:
+        return pd.DataFrame()
 
-    df = pd.concat(records, ignore_index=True)
+    max_workers = min(len(seeds), 8) or 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        frames = list(executor.map(_task, seeds))
+
+    df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    df.sort_values(["run_id", "date"], inplace=True)
+    df.reset_index(drop=True, inplace=True)
     return df

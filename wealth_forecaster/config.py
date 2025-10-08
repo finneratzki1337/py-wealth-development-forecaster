@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 _DEFAULT_CONFIG: Dict[str, Any] = {
     "seed_base": 1000,
+    "runs_per_scenario": 200,
     "horizon_years": 30,
     "start_date": "2025-01",
     "cash": {
@@ -39,6 +40,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
             "sigma_pa": 0.20,
         },
     },
+    "volatility_multiplier": 1.0,
     "return_model": {
         "mean_type": "arithmetic",
         "distribution": "normal_arith",
