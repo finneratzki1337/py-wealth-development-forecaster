@@ -1,0 +1,406 @@
+Wealth-Development Prediction — Technical Spec (v1)
+
+Purpose: Interactive, reproducible simulator for long-horizon wealth development with scenario-based return drifts, stochastic inflation, fees, and tax-aware withdrawal metrics. Built “Python-first” with interactive Plotly visuals.
+
+1) Scope & Non-Goals
+
+In scope (v1):
+
+30-year horizon, monthly time steps.
+
+3 market scenarios (Optimistic/Moderate/Pessimistic) with blockwise annual drifts and per-scenario volatilities.
+
+Deterministic interactivity: 3 seeds per scenario (seed, seed×10, seed×100) ⇒ 9 paths total.
+
+Stochastic inflation (seed-based).
+
+Cashflows: start value, monthly contributions, yearly step-up, pauses/events.
+
+Fees (TER) as continuous drag; taxes only in withdrawal metrics.
+
+Interactive Plotly charts; XLSX export; config/run hashing; validation warnings.
+
+Out of scope (v1):
+
+Asset-level simulation, correlations, rebalancing, glidepaths.
+
+Large Monte-Carlo (e.g., 1000+ paths).
+
+Country-specific tax lots / FIFO / partial exemptions.
+
+2) Inputs & Defaults
+{
+  "seed_base": 1000,
+  "horizon_years": 30,
+  "cash": {
+    "initial": 0.0,
+    "monthly": 0.0,
+    "annual_increase": 0.00,        // e.g., 0.05 for +5%/year, applied each January
+    "pauses": [ ["2030-01","2030-12"] ],
+    "events": [ {"date":"2032-01","new_monthly":1500.0} ]
+  },
+  "inflation": {
+    "mean_pa": 0.02,                // annual mean
+    "sigma_pa": 0.01,               // annual std
+    "stochastic": true
+  },
+  "costs_taxes": {
+    "ter_pa": 0.003,                // 0.30% p.a.
+    "withholding_tax_rate": 0.25    // 25% flat on withdrawals’ return component (simplification)
+  },
+  "scenarios": {
+    "optimistic":   { "mu_pa_blocks":[0.06,0.08,0.08,0.07,0.07,0.06], "sigma_pa": 0.10 },
+    "moderate":     { "mu_pa_blocks":[0.05,0.06,0.06,0.05,0.05,0.05], "sigma_pa": 0.14 },
+    "pessimistic":  { "mu_pa_blocks":[0.00,0.02,0.03,0.02,0.02,0.02], "sigma_pa": 0.20 }
+  },
+  "return_model": {
+    "mean_type": "arithmetic",      // "arithmetic" (default) or "geometric"
+    "distribution": "normal_arith", // "normal_arith" (default) or "lognormal_match"
+    "truncate_at_minus_100": true
+  },
+  "withdrawal_params": {
+    "r_nom_perp": null,             // if null, use scenario’s last 5y mean
+    "r_real_perp": null,            // same
+    "r_nom_ann": null,              // annuity nominal discount
+    "r_real_ann": null              // annuity real discount
+  }
+}
+
+
+Note: 6 blocks × 5 years = 30 years. Dates are YYYY-MM; UI provides date picker or month index.
+
+3) Mathematical Model
+3.1 Annual → Monthly conversions
+
+Let annual arithmetic mean and std for a scenario block be μ_y, σ_y.
+
+Monthly arithmetic mean: μ_m = μ_y / 12
+
+Monthly arithmetic std: σ_m = σ_y / √12
+
+If mean_type = "geometric" instead:
+
+Geometric monthly: (1 + μ_m) = (1 + μ_y)^(1/12)
+(Use with lognormal sampling for strict geometric interpretation.)
+
+3.2 Return sampling (per month)
+
+Let fee_m = (1 + TER)^(1/12) − 1. Generate gross return, then apply fees multiplicatively:
+
+Normal arithmetic (default):
+r_gross ~ N(μ_m, σ_m); if truncate_at_minus_100, clamp at r_gross ≥ −0.999999.
+Net factor: G = (1 + r_gross) * (1 − fee_m) ⇒ r_net = G − 1.
+
+Lognormal (match mean & std), optional: Given target arithmetic monthly mean a = μ_m and variance v = σ_m², set
+E[R] = 1 + a, Var[R] = v for R = 1 + r.
+Solve lognormal params:
+
+s² = ln( 1 + Var[R] / (E[R])² )
+m  = ln(E[R]) − 0.5 * s²
+
+
+Sample R_gross = exp( N(m, s²) ), then apply fees: R = R_gross * (1 − fee_m), r_net = R − 1.
+
+3.3 Block logic
+
+Each 5-year block uses its own (μ_y, σ_y) pair; convert to monthly; apply for its 60 months.
+
+3.4 Contributions & balance update
+
+Start V₀ = initial. For month t:
+
+Determine contribution c_t with annual step-up each January:
+c_{Jan,y} = c_{Jan,y−1} * (1 + annual_increase); apply pauses/events overrides.
+
+Update: V_{t+} = (V_t + c_t) * (1 + r_net_t)
+
+3.5 Inflation (stochastic, yearly draws)
+
+For year y: draw π_y ~ N( mean_pa, sigma_pa ), cap at > −0.99.
+Monthly inflation factor for that calendar year: f_π = (1 + π_y)^(1/12).
+Cumulative CPI factor to t: CPI_t = Π f_π. Real wealth: V_real_t = V_nom_t / CPI_t.
+
+3.6 Withdrawals (computed at horizon end)
+
+Let end values V_nom_end, V_real_end.
+
+Perpetuity (monthly):
+
+Pick r_nom_perp (default = last block mean of selected scenario) ⇒
+PMT_nom_brutto = V_nom_end * r_nom_perp / 12
+Net (simplified: entire payment treated as return):
+PMT_nom_net = PMT_nom_brutto * (1 − tax)
+
+Real analog with r_real_perp and V_real_end.
+
+30-year annuity (360 months):
+
+Monthly discount i = r_nom_ann / 12
+PMT_nom_brutto = V_nom_end * i / (1 − (1 + i)^(−360))
+PMT_nom_net ≈ PMT_nom_brutto * (1 − tax) (simplified; exact split of principal/interest is deferred).
+
+Real analog with r_real_ann and V_real_end.
+
+All tax treatments are explicit simplifications in v1.
+
+4) Engine & Reproducibility
+
+Seeds per scenario: {seed_base, 10×, 100×} ⇒ 3 runs per scenario.
+
+RNG: numpy.random.Generator(PCG64(seed)).
+Derive sub-streams for inflation vs returns (e.g., SeedSequence(seed).spawn(2)).
+
+Run metadata: store {"seed_base", "numpy_version", "scenario_table_version", "code_version", "timestamp"}.
+
+5) Algorithm (high-level)
+
+Build monthly schedule (dates, block indices, January flags).
+
+For each scenario s:
+
+For each run r ∈ {1,2,3} with seed {seed,10×,100×}:
+
+Sample yearly inflations, expand to monthly CPI factors.
+
+For each block, compute monthly (μ_m, σ_m) and sample monthly returns (per §3.2).
+
+Simulate wealth path with contributions and fees (per §3.4).
+
+Deflate to real terms via CPI (per §3.5).
+
+Track cumulative contributions and CPI.
+
+Aggregate per scenario: mean of the 3 paths (nominal & real).
+Also compute min/max envelope (confidence band proxy for n=3).
+
+Compute metrics: deposits, returns (End − deposits), end values (nom & real), perpetuity and annuity payments (gross/net).
+Optional: target-hit flags per path for target end value or target real income (n=3; show sample-size note).
+
+Export (XLSX), hash run.
+
+6) Data Structures
+6.1 In-memory frames
+
+Paths DF (long):
+
+date | scenario | run_id | seed_used | value_nom | value_real | contrib_cum | cpi_cum | r_net
+
+
+Aggregates (per scenario):
+
+end_nom_mean, end_real_mean, deposits_nom, returns_nom, deposits_real, returns_real,
+pmt_perp_nom_brutto/net, pmt_perp_real_brutto/net, pmt_ann30_nom_brutto/net, pmt_ann30_real_brutto/net
+
+6.2 Hash (reproducibility)
+
+run_hash = sha256( canonical_json({inputs_sorted, scenario_table_version, code_version}) )
+
+7) Validation & Warnings
+
+Type/range checks (non-negative numeric inputs, sensible bounds).
+
+Economic plausibility warnings:
+
+inflation_mean_pa > scenario μ_y: “Expected real drift negative.”
+
+ter_pa > 0.05: “Unusually high fee.”
+
+σ_y > 0.40: “Volatility unusually high.”
+
+Annuity/perpetuity discount ≤ 0: “Payment not defined.”
+
+UI displays warnings as dismissible banner + icon near controls.
+
+8) UI/UX (Dash with Plotly, Python-first)
+
+Framework: Plotly Dash (no Node build step).
+Layout (responsive, 2 columns):
+
+Left Sidebar (Controls):
+
+Scenario section (read-only table of μ blocks & σ per scenario).
+
+Simulation:
+
+seed_base (int)
+
+Horizon years (fixed 30 in v1; disabled input)
+
+Cash:
+
+Initial, Monthly, Annual increase (%)
+
+Pauses (multi-range picker by month)
+
+Events (dynamic rows: date, new monthly)
+
+Inflation:
+
+Mean % p.a., Sigma % p.a., “stochastic” toggle
+
+Costs & Taxes:
+
+TER % p.a. (default 0.30%)
+
+Tax % (default 25%)
+
+Withdrawals:
+
+Perpetuity r_nom/r_real (optional override)
+
+Annuity r_nom/r_real (optional override)
+
+Buttons: Run, Download XLSX, Save Config, Load Config
+
+Right Content (Tabs):
+
+Nominal Chart:
+
+9 semi-transparent lines (3 per scenario), average line per scenario (bold).
+
+End markers; legend toggles per scenario; hover shows end values.
+
+Shaded band per scenario = min..max of its 3 runs (labeled “n=3 band”).
+
+Real Chart: same as nominal, deflated.
+
+Tables:
+
+Totals: deposits vs returns; end values nominal/real (per scenario mean) + overall mean across 9 runs.
+
+Withdrawal table: perpetuity and 30-year annuity (gross/net; nom/real).
+
+Run Info & Warnings:
+
+Seeds, versions, run hash; validation messages.
+
+Interactions: Any input change enables Run; debounce to prevent thrashing. Charts and tables refresh on successful run.
+
+9) Files & Modules
+repo/
+  app.py                      # Dash app wiring
+  core/
+    config.py                 # schema, defaults, load/save
+    simulate.py               # path engine
+    inflation.py              # yearly draws → monthly factors
+    returns.py                # sampling methods
+    metrics.py                # aggregates, withdrawals
+    hashing.py                # canonical json + sha256
+    export.py                 # XLSX writer (pandas + openpyxl/xlsxwriter)
+    validate.py               # input checks, warnings
+  ui/
+    layout.py                 # Dash layout/components
+    callbacks.py              # Dash callbacks
+  data/
+    scenario_table_v1.json    # μ blocks & σ per scenario
+  tests/
+    test_conversions.py
+    test_returns.py
+    test_inflation.py
+    test_annuity.py
+    test_repro.py
+  requirements.txt
+  README.md
+
+10) Function Signatures (Python)
+# config.py
+def default_config() -> dict: ...
+def load_config(path: str) -> dict: ...
+def save_config(cfg: dict, path: str) -> None: ...
+def canonicalize(cfg: dict) -> dict: ...  # sort keys, drop transient fields
+
+# returns.py
+def monthly_params(mu_y: float, sigma_y: float, mean_type: str) -> tuple[float, float]:
+    """Return (mu_m, sigma_m) from annual params per §3.1."""
+def sample_monthly_returns(n: int, mu_m: float, sigma_m: float, ter_pa: float,
+                           distribution: str, truncate_at_minus_100: bool,
+                           rng: np.random.Generator) -> np.ndarray:
+    """Vector of net monthly returns length n (fees applied multiplicatively)."""
+
+# inflation.py
+def sample_yearly_inflation(years: int, mean_pa: float, sigma_pa: float,
+                            rng: np.random.Generator) -> np.ndarray:
+    """Yearly inflation draws; capped > -0.99."""
+def expand_to_monthly_factors(yearly_pi: np.ndarray) -> np.ndarray:
+    """Monthly CPI factors fπ for each month."""
+
+# simulate.py
+def simulate_paths(cfg: dict, scenario_id: str) -> pd.DataFrame:
+    """
+    Build 3 runs for the scenario using seeds {seed,10x,100x}.
+    Returns long DF with columns:
+    date, scenario, run_id, seed_used, value_nom, value_real, contrib_cum, cpi_cum, r_net
+    """
+
+# metrics.py
+def aggregate(df_paths: pd.DataFrame, tax: float,
+              withdraw_params: dict) -> dict:
+    """Compute deposits, returns, end values; perpetuity & 30y annuity (gross/net)."""
+def target_flags(df_paths: pd.DataFrame, target_end_real: float | None,
+                 target_income_real: float | None) -> dict: ...
+
+# export.py
+def export_xlsx(df_paths: pd.DataFrame, agg: dict, path: str) -> None: ...
+
+# hashing.py
+def run_hash(cfg: dict, versions: dict) -> str: ...
+
+# validate.py
+def validate_inputs(cfg: dict) -> list[str]:  # list of warnings/errors
+
+11) XLSX Export (structure)
+
+Overview: inputs snapshot (JSON), seeds, versions, run hash, warnings.
+
+Nominal Paths: date × 9 columns (scenario/run) + per-scenario average.
+
+Real Paths: same.
+
+Aggregates: deposits, returns, end values (nom/real) per scenario mean + overall mean.
+
+Withdrawals: perpetuity & 30y annuity (gross/net, nom/real).
+
+12) Testing (minimum)
+
+Annual↔Monthly conversions (arith vs geom).
+
+Lognormal parameter match (rebuild mean/std within tolerance).
+
+Fees multiplicative effect vs additive approximation.
+
+Inflation yearly→monthly expansion correctness.
+
+Contribution step-up each January; pauses/events precedence.
+
+Reproducibility across seeds and versions.
+
+Annuity/Perpetuity formulas yield expected payments on known inputs.
+
+13) Acceptance Criteria
+
+Changing any input then clicking Run refreshes both charts and tables in <1s for v1 (9 paths × 360 months).
+
+9 path lines visible per chart, with thicker per-scenario average and min–max band.
+
+XLSX export matches on-screen data; run hash present in file.
+
+Warnings shown for implausible inputs; no crashes on edge cases (monthly=0, initial=0, high inflation, etc.).
+
+Saved config reloads to identical results (same seeds, same hash).
+
+14) Notes & Extensions (documented for v2+)
+
+Asset-level 80/10/10 with covariance; t-distributed returns / block bootstrap.
+
+Rebalancing/glidepaths; dynamic allocation rules.
+
+Exact tax modeling (FIFO lots, partial exemptions); country profiles.
+
+Larger Monte-Carlo mode (e.g., 1000 paths) with percentile bands.
+
+Scenario Table v1 (for data/scenario_table_v1.json)
+{
+  "optimistic":  { "mu_pa_blocks":[0.06,0.08,0.08,0.07,0.07,0.06], "sigma_pa":0.10 },
+  "moderate":    { "mu_pa_blocks":[0.05,0.06,0.06,0.05,0.05,0.05], "sigma_pa":0.14 },
+  "pessimistic": { "mu_pa_blocks":[0.00,0.02,0.03,0.02,0.02,0.02], "sigma_pa":0.20 }
+}
