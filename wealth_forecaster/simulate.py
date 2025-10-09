@@ -76,6 +76,7 @@ def _scenario_returns(
     distribution = cfg.get("return_model", {}).get("distribution", "normal_arith")
     truncate = cfg.get("return_model", {}).get("truncate_at_minus_100", True)
     ter = cfg.get("costs_taxes", {}).get("ter_pa", 0.0)
+    optimism_adj = cfg.get("optimism_adjustment", 0.0)
 
     horizon_months = int(cfg["horizon_years"]) * 12
     returns: List[float] = []
@@ -104,7 +105,14 @@ def _scenario_returns(
                 missing, mu_m, sigma_m, ter, distribution, truncate, rng
             ).tolist()
         )
-    return np.array(returns[:horizon_months])
+    
+    # Apply optimism adjustment (convert annual to monthly)
+    optimism_monthly = optimism_adj / 12.0
+    returns_array = np.array(returns[:horizon_months])
+    if optimism_monthly != 0.0:
+        returns_array = returns_array + optimism_monthly
+    
+    return returns_array
 
 
 def _inflation_factors(cfg: Dict, rng: np.random.Generator) -> np.ndarray:

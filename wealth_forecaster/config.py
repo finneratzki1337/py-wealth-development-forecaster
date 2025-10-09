@@ -41,6 +41,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         },
     },
     "volatility_multiplier": 1.0,
+    "optimism_adjustment": 0.0,
     "return_model": {
         "mean_type": "arithmetic",
         "distribution": "normal_arith",

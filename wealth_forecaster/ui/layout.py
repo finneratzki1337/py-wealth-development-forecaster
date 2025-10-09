@@ -167,6 +167,13 @@ def build_controls(cfg: dict) -> dbc.Col:
                                         min=0.1,
                                         step=0.1,
                                     ),
+                                    dbc.Label("Optimism Adjustment (%)"),
+                                    dbc.Input(
+                                        id="optimism-adjustment",
+                                        type="number",
+                                        value=round(cfg.get("optimism_adjustment", 0.0) * 100, 2),
+                                        step=0.1,
+                                    ),
                                 ],
                                 className="parameter-card",
                             ),

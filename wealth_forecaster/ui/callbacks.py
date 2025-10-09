@@ -208,6 +208,7 @@ def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
     cfg["seed_base"] = safe_int(values.get("seed_base"), cfg.get("seed_base", 1000))
     cfg["runs_per_scenario"] = max(100, safe_int(values.get("runs_per_scenario"), 200))
     cfg["volatility_multiplier"] = max(0.01, safe_float(values.get("volatility_multiplier"), 1.0))
+    cfg["optimism_adjustment"] = safe_float(values.get("optimism_adjustment"), 0.0) / 100.0
 
     cash = cfg["cash"]
     cash["initial"] = safe_float(values.get("initial_capital"), cash.get("initial", 0.0))
@@ -591,6 +592,7 @@ def register_callbacks(app):
         State("inflation-mean", "value"),
         State("inflation-sigma", "value"),
         State("volatility-multiplier", "value"),
+        State("optimism-adjustment", "value"),
         State("inflation-stochastic", "value"),
         prevent_initial_call=True,
     )
@@ -608,6 +610,7 @@ def register_callbacks(app):
         inflation_mean,
         inflation_sigma,
         volatility_multiplier,
+        optimism_adjustment,
         inflation_stochastic,
     ):
         values = {
@@ -623,6 +626,7 @@ def register_callbacks(app):
             "inflation_mean": inflation_mean,
             "inflation_sigma": inflation_sigma,
             "volatility_multiplier": volatility_multiplier,
+            "optimism_adjustment": optimism_adjustment,
             "inflation_stochastic": inflation_stochastic or [],
         }
         cfg = _config_from_inputs(values)
