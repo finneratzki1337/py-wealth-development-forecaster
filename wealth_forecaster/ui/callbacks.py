@@ -69,31 +69,46 @@ def _get_percentiles(metrics: Dict, *keys: str) -> Dict[str, float]:
 
 def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
     cfg = canonicalize(default_config())
-    cfg["start_date"] = values["start_date"]
-    cfg["horizon_years"] = int(values["horizon_years"])
-    cfg["seed_base"] = int(values["seed_base"])
-    runs = values.get("runs_per_scenario")
-    cfg["runs_per_scenario"] = max(100, int(runs) if runs is not None else 200)
-    vol_mult = values.get("volatility_multiplier")
-    cfg["volatility_multiplier"] = max(
-        0.01, float(vol_mult) if vol_mult is not None else 1.0
-    )
+    
+    # Helper to safely convert to float with default
+    def safe_float(val, default=0.0):
+        if val is None or val == "":
+            return default
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return default
+    
+    # Helper to safely convert to int with default
+    def safe_int(val, default=0):
+        if val is None or val == "":
+            return default
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+    
+    cfg["start_date"] = values.get("start_date") or cfg.get("start_date", "2025-01")
+    cfg["horizon_years"] = safe_int(values.get("horizon_years"), cfg.get("horizon_years", 30))
+    cfg["seed_base"] = safe_int(values.get("seed_base"), cfg.get("seed_base", 1000))
+    cfg["runs_per_scenario"] = max(100, safe_int(values.get("runs_per_scenario"), 200))
+    cfg["volatility_multiplier"] = max(0.01, safe_float(values.get("volatility_multiplier"), 1.0))
 
     cash = cfg["cash"]
-    cash["initial"] = float(values["initial_capital"])
-    cash["monthly"] = float(values["monthly_contribution"])
-    cash["annual_increase"] = float(values["annual_increase"]) / 100.0
+    cash["initial"] = safe_float(values.get("initial_capital"), cash.get("initial", 0.0))
+    cash["monthly"] = safe_float(values.get("monthly_contribution"), cash.get("monthly", 0.0))
+    cash["annual_increase"] = safe_float(values.get("annual_increase"), 0.0) / 100.0
     cash["pauses"] = []
     cash["events"] = []
 
     costs = cfg["costs_taxes"]
-    costs["ter_pa"] = float(values["ter"]) / 100.0
-    costs["withholding_tax_rate"] = float(values["tax_rate"]) / 100.0
+    costs["ter_pa"] = safe_float(values.get("ter"), costs.get("ter_pa", 0.003) * 100) / 100.0
+    costs["withholding_tax_rate"] = safe_float(values.get("tax_rate"), costs.get("withholding_tax_rate", 0.25) * 100) / 100.0
 
     inflation = cfg["inflation"]
-    inflation["mean_pa"] = float(values["inflation_mean"]) / 100.0
-    inflation["sigma_pa"] = float(values["inflation_sigma"]) / 100.0
-    inflation["stochastic"] = "on" in values["inflation_stochastic"]
+    inflation["mean_pa"] = safe_float(values.get("inflation_mean"), inflation.get("mean_pa", 0.02) * 100) / 100.0
+    inflation["sigma_pa"] = safe_float(values.get("inflation_sigma"), inflation.get("sigma_pa", 0.01) * 100) / 100.0
+    inflation["stochastic"] = "on" in (values.get("inflation_stochastic") or [])
 
     return cfg
 

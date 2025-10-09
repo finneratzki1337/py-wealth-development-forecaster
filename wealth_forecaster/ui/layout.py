@@ -46,6 +46,39 @@ def build_controls(cfg: dict) -> dbc.Col:
                     dbc.Row(
                         [
                             dbc.Col(
+                                [
+                                    dbc.Label("Simulation Seed", className="seed-label-small"),
+                                    dbc.Input(
+                                        id="seed-base",
+                                        type="number",
+                                        value=cfg.get("seed_base", 1000),
+                                        min=1,
+                                        step=1,
+                                        className="seed-input-small",
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                            dbc.Col(
+                                [
+                                    dbc.Label("Runs/Scenario", className="seed-label-small"),
+                                    dbc.Input(
+                                        id="runs-per-scenario",
+                                        type="number",
+                                        value=cfg.get("runs_per_scenario", 200),
+                                        min=100,
+                                        step=10,
+                                        className="seed-input-small",
+                                    ),
+                                ],
+                                md=4,
+                            ),
+                        ],
+                        className="g-2 mb-2",
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
                                 dbc.Button(
                                     "Run Simulation",
                                     id="run-button",
@@ -71,7 +104,9 @@ def build_controls(cfg: dict) -> dbc.Col:
                 ],
                 className="mb-3",
             ),
-            html.H2("Simulation Settings", className="panel-title mb-3 neon-accent"),
+            html.Hr(),
+            html.H2("Parameters", className="panel-title mb-3 neon-accent"),
+            html.H3("Timeline", className="section-title mt-2 mb-2"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -98,7 +133,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                 className="g-2 compact-row",
             ),
             html.Hr(),
-            html.H3("Contributions", className="section-title mt-3"),
+            html.H3("Contributions", className="section-title mt-2 mb-2"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -142,39 +177,13 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.5,
                             ),
                         ],
-                        md=4,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Seed Base"),
-                            dbc.Input(
-                                id="seed-base",
-                                type="number",
-                                value=cfg.get("seed_base", 1000),
-                                min=1,
-                                step=1,
-                            ),
-                        ],
-                        md=4,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Runs per Scenario"),
-                            dbc.Input(
-                                id="runs-per-scenario",
-                                type="number",
-                                value=cfg.get("runs_per_scenario", 200),
-                                min=100,
-                                step=10,
-                            ),
-                        ],
-                        md=4,
+                        md=12,
                     ),
                 ],
                 className="g-2 compact-row",
             ),
             html.Hr(),
-            html.H3("Economics", className="section-title mt-3"),
+            html.H3("Costs & Taxes", className="section-title mt-2 mb-2"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -187,7 +196,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.05,
                             ),
                         ],
-                        md=4,
+                        md=6,
                     ),
                     dbc.Col(
                         [
@@ -201,11 +210,18 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 max=100,
                             ),
                         ],
-                        md=4,
+                        md=6,
                     ),
+                ],
+                className="g-2 compact-row",
+            ),
+            html.Hr(),
+            html.H3("Inflation", className="section-title mt-2 mb-2"),
+            dbc.Row(
+                [
                     dbc.Col(
                         [
-                            dbc.Label("Inflation Mean (p.a. %)"),
+                            dbc.Label("Mean (p.a. %)"),
                             dbc.Input(
                                 id="inflation-mean",
                                 type="number",
@@ -213,16 +229,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.1,
                             ),
                         ],
-                        md=4,
+                        md=6,
                     ),
-                ],
-                className="g-2 compact-row",
-            ),
-            dbc.Row(
-                [
                     dbc.Col(
                         [
-                            dbc.Label("Inflation Sigma (p.a. %)"),
+                            dbc.Label("Sigma (p.a. %)"),
                             dbc.Input(
                                 id="inflation-sigma",
                                 type="number",
@@ -233,6 +244,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                         ],
                         md=6,
                     ),
+                ],
+                className="g-2 compact-row",
+            ),
+            dbc.Row(
+                [
                     dbc.Col(
                         [
                             dbc.Label("Stochastic Inflation"),
@@ -243,11 +259,15 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 switch=True,
                             ),
                         ],
-                        md=6,
+                        md=12,
                     ),
                 ],
                 className="g-2 compact-row align-items-center",
             ),
+            html.Hr(),
+            html.H3("Risk", className="section-title mt-2 mb-2"),
+            html.Hr(),
+            html.H3("Risk", className="section-title mt-2 mb-2"),
             dbc.Row(
                 [
                     dbc.Col(
@@ -261,7 +281,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.1,
                             ),
                         ],
-                        md=6,
+                        md=12,
                     ),
                 ],
                 className="g-2 compact-row",
