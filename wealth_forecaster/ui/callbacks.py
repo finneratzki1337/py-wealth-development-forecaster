@@ -457,14 +457,14 @@ def _build_scenario_details(agg: Dict) -> html.Component:
 def _build_growth_rates_table(df: pd.DataFrame) -> html.Component:
     def _placeholder() -> html.Component:
         placeholder = html.Div(
-            "Run the simulation to view yearly growth rates.",
+            "Run the simulation to view market growth assumptions.",
             className="details-placeholder",
         )
         return dbc.Accordion(
             [
                 dbc.AccordionItem(
                     placeholder,
-                    title="Average YoY Growth (%)",
+                    title="Average Market Growth (%)",
                 )
             ],
             start_collapsed=True,
@@ -476,39 +476,81 @@ def _build_growth_rates_table(df: pd.DataFrame) -> html.Component:
 
     df_sorted = df.sort_values(["scenario", "run_id", "date"])
     df_sorted["year"] = df_sorted["date"].dt.year
-    yearly = (
+    yearly_values = (
         df_sorted.groupby(["scenario", "run_id", "year"], as_index=False)
         .agg(value_nom=("value_nom", "last"))
     )
 
-    if yearly.empty:
+    if yearly_values.empty:
         return _placeholder()
 
-    yearly["growth"] = yearly.groupby(["scenario", "run_id"])["value_nom"].pct_change()
+    def _compound_growth(series: pd.Series) -> float:
+        return float(np.prod(1.0 + series.values) - 1.0)
+
+    yearly_returns = (
+        df_sorted.groupby(["scenario", "run_id", "year"], as_index=False)
+        .agg(market_growth=("r_net", _compound_growth))
+    )
+
+    if yearly_returns.empty:
+        return _placeholder()
+
     growth = (
-        yearly.groupby(["scenario", "year"], as_index=False)
-        ["growth"].mean()
+        yearly_returns.groupby(["scenario", "year"], as_index=False)[
+            "market_growth"
+        ].mean()
     )
 
     if growth.empty:
         return _placeholder()
 
-    pivot = (
-        growth.pivot(index="year", columns="scenario", values="growth")
+    pivot_growth = (
+        growth.pivot(index="year", columns="scenario", values="market_growth")
         .sort_index()
+    )
+    pivot_values = (
+        yearly_values.groupby(["scenario", "year"], as_index=False)["value_nom"]
+        .median()
+        .pivot(index="year", columns="scenario", values="value_nom")
+        .reindex(pivot_growth.index, fill_value=float("nan"))
     )
     scenario_order = ["optimistic", "moderate", "pessimistic"]
     header_cells = [html.Th("Year")] + [html.Th(s.title()) for s in scenario_order]
     rows = []
-    for year in pivot.index:
+    for year in pivot_growth.index:
         row_cells = [html.Th(str(int(year)))]
         for scenario in scenario_order:
-            value = pivot.loc[year, scenario] if scenario in pivot.columns else float("nan")
-            if pd.isna(value):
-                display = "—"
+            growth_value = (
+                pivot_growth.loc[year, scenario]
+                if scenario in pivot_growth.columns
+                else float("nan")
+            )
+            abs_value = (
+                pivot_values.loc[year, scenario]
+                if scenario in pivot_values.columns
+                else float("nan")
+            )
+
+            if pd.isna(growth_value):
+                percent_display = "—"
             else:
-                display = f"{value * 100:.2f}%"
-            row_cells.append(html.Td(display))
+                percent_display = f"{growth_value * 100:.2f}%"
+
+            if pd.isna(abs_value):
+                abs_display: html.Small | None = None
+            else:
+                abs_display = html.Small(
+                    f"Median: {_format_currency(abs_value)}",
+                    className="growth-absolute",
+                )
+
+            cell_children: List[html.Component] = [
+                html.Div(percent_display, className="growth-percent")
+            ]
+            if abs_display is not None:
+                cell_children.append(abs_display)
+
+            row_cells.append(html.Td(cell_children, className="growth-cell"))
         rows.append(html.Tr(row_cells))
 
     table = dbc.Table(
@@ -523,7 +565,7 @@ def _build_growth_rates_table(df: pd.DataFrame) -> html.Component:
         [
             dbc.AccordionItem(
                 table,
-                title="Average YoY Growth (%)",
+                title="Average Market Growth (%)",
             )
         ],
         start_collapsed=True,

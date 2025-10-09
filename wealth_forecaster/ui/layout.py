@@ -42,10 +42,10 @@ def build_controls(cfg: dict) -> dbc.Col:
     return dbc.Col(
         [
             html.Div(
-                [
-                    dbc.Row(
-                        [
-                            dbc.Col(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.Div(
                                 [
                                     dbc.Label("Simulation Seed", className="seed-label-small"),
                                     dbc.Input(
@@ -57,9 +57,13 @@ def build_controls(cfg: dict) -> dbc.Col:
                                         className="seed-input-small",
                                     ),
                                 ],
-                                md=4,
+                                className="top-control-card",
                             ),
-                            dbc.Col(
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
                                 [
                                     dbc.Label("Runs/Scenario", className="seed-label-small"),
                                     dbc.Input(
@@ -71,37 +75,48 @@ def build_controls(cfg: dict) -> dbc.Col:
                                         className="seed-input-small",
                                     ),
                                 ],
-                                md=4,
+                                className="top-control-card",
                             ),
-                        ],
-                        className="g-2 mb-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                dbc.Button(
-                                    "Run Simulation",
-                                    id="run-button",
-                                    color="primary",
-                                    size="sm",
-                                    className="w-100 neon-button primary-button",
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                html.Div(
+                                    dbc.Button(
+                                        "Run Simulation",
+                                        id="run-button",
+                                        color="primary",
+                                        size="sm",
+                                        className="w-100 neon-button primary-button",
+                                    ),
+                                    className="w-100 d-grid",
                                 ),
-                                md=6,
+                                className="top-control-card top-control-button",
                             ),
-                            dbc.Col(
-                                dbc.Button(
-                                    "Download XLSX",
-                                    id="export-button",
-                                    color="secondary",
-                                    size="sm",
-                                    className="w-100 neon-button secondary-button",
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                html.Div(
+                                    dbc.Button(
+                                        "Download XLSX",
+                                        id="export-button",
+                                        color="secondary",
+                                        size="sm",
+                                        className="w-100 neon-button secondary-button",
+                                    ),
+                                    className="w-100 d-grid",
                                 ),
-                                md=6,
+                                className="top-control-card top-control-button",
                             ),
-                        ],
-                        className="g-2 button-row",
-                    ),
-                ],
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                    ],
+                    className="g-2 mb-2 align-items-stretch button-row top-control-row",
+                ),
                 className="mb-3",
             ),
             html.Hr(),
@@ -114,7 +129,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                             dbc.Label("Start Date (YYYY-MM)"),
                             dbc.Input(id="start-date", value=cfg.get("start_date", "2025-01")),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=3,
+                        xl=2,
                     ),
                     dbc.Col(
                         [
@@ -127,7 +146,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=1,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -147,7 +170,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=1,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                     dbc.Col(
                         [
@@ -160,7 +187,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=100,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -177,7 +208,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.5,
                             ),
                         ],
-                        md=12,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -196,7 +231,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.05,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                     dbc.Col(
                         [
@@ -210,7 +249,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 max=100,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -229,7 +272,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.1,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                     dbc.Col(
                         [
@@ -242,7 +289,11 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 min=0,
                             ),
                         ],
-                        md=6,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
@@ -259,13 +310,15 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 switch=True,
                             ),
                         ],
-                        md=12,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row align-items-center",
             ),
-            html.Hr(),
-            html.H3("Risk", className="section-title mt-2 mb-2"),
             html.Hr(),
             html.H3("Risk", className="section-title mt-2 mb-2"),
             dbc.Row(
@@ -281,14 +334,18 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 step=0.1,
                             ),
                         ],
-                        md=12,
+                        xs=12,
+                        sm=6,
+                        md=4,
+                        lg=2,
+                        xl=2,
                     ),
                 ],
                 className="g-2 compact-row",
             ),
         ],
-        md=4,
-        className="control-panel neon-panel p-3 rounded-3 h-100",
+        width=12,
+        className="control-panel neon-panel p-3 rounded-3",
     )
 
 
@@ -299,81 +356,115 @@ def serve_layout() -> dbc.Container:
             dcc.Store(id="config-store", data=cfg),
             dcc.Store(id="results-store"),
             dcc.Download(id="download-xlsx"),
+            html.H1(
+                "Wealth Development Forecaster",
+                className="app-title mb-3 neon-accent",
+            ),
+            html.Div(id="warning-banner"),
+            dbc.Row([build_controls(cfg)], className="g-3 layout-row"),
             dbc.Row(
                 [
-                    build_controls(cfg),
                     dbc.Col(
                         [
-                            html.H1(
-                                "Wealth Development Forecaster",
-                                className="app-title mb-3 neon-accent",
+                            html.H3(
+                                "Nominal Growth Highlights",
+                                className="section-title",
                             ),
-                            html.Div(id="warning-banner"),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Div(
-                                                    id="nominal-widget",
-                                                    className="graph-highlight-widget",
-                                                    children=html.Div(
-                                                        "Run the simulation to see highlights.",
-                                                        className="widget-placeholder",
-                                                    ),
-                                                ),
-                                                dcc.Loading(
-                                                    id="nominal-loading",
-                                                    type="default",
-                                                    className="graph-loading-wrapper",
-                                                    children=dcc.Graph(
-                                                        id="nominal-graph",
-                                                        config={"displayModeBar": False},
-                                                        className="neon-graph",
-                                                        style={"height": "320px"},
-                                                        figure=_placeholder_figure(
-                                                            "Nominal Wealth Development"
-                                                        ),
-                                                    ),
-                                                ),
-                                            ],
-                                            className="graph-section",
-                                        ),
-                                        md=12,
-                                    ),
-                                    dbc.Col(
-                                        html.Div(
-                                            [
-                                                html.Div(
-                                                    id="real-widget",
-                                                    className="graph-highlight-widget",
-                                                    children=html.Div(
-                                                        "Run the simulation to see highlights.",
-                                                        className="widget-placeholder",
-                                                    ),
-                                                ),
-                                                dcc.Loading(
-                                                    id="real-loading",
-                                                    type="default",
-                                                    className="graph-loading-wrapper",
-                                                    children=dcc.Graph(
-                                                        id="real-graph",
-                                                        config={"displayModeBar": False},
-                                                        className="neon-graph",
-                                                        style={"height": "320px"},
-                                                        figure=_placeholder_figure(
-                                                            "Real Wealth Development"
-                                                        ),
-                                                    ),
-                                                ),
-                                            ],
-                                            className="graph-section",
-                                        ),
-                                        md=12,
-                                    ),
-                                ]
+                            html.Div(
+                                id="nominal-widget",
+                                className="graph-highlight-widget",
+                                children=html.Div(
+                                    "Run the simulation to see highlights.",
+                                    className="widget-placeholder",
+                                ),
                             ),
-                            html.H3("Scenario Summary", className="mt-4 section-title"),
+                        ],
+                        lg=4,
+                        md=12,
+                        className="callout-panel neon-panel p-3 rounded-3",
+                    ),
+                    dbc.Col(
+                        [
+                            html.H3(
+                                "Nominal Wealth Development",
+                                className="section-title",
+                            ),
+                            dcc.Loading(
+                                id="nominal-loading",
+                                type="default",
+                                className="graph-loading-wrapper",
+                                children=dcc.Graph(
+                                    id="nominal-graph",
+                                    config={"displayModeBar": False},
+                                    className="neon-graph",
+                                    style={"height": "320px"},
+                                    figure=_placeholder_figure(
+                                        "Nominal Wealth Development"
+                                    ),
+                                ),
+                            ),
+                        ],
+                        lg=8,
+                        md=12,
+                        className="chart-panel neon-panel p-3 rounded-3",
+                    ),
+                ],
+                className="g-3 layout-row",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.H3(
+                                "Real Growth Highlights",
+                                className="section-title",
+                            ),
+                            html.Div(
+                                id="real-widget",
+                                className="graph-highlight-widget",
+                                children=html.Div(
+                                    "Run the simulation to see highlights.",
+                                    className="widget-placeholder",
+                                ),
+                            ),
+                        ],
+                        lg=4,
+                        md=12,
+                        className="callout-panel neon-panel p-3 rounded-3",
+                    ),
+                    dbc.Col(
+                        [
+                            html.H3(
+                                "Real Wealth Development",
+                                className="section-title",
+                            ),
+                            dcc.Loading(
+                                id="real-loading",
+                                type="default",
+                                className="graph-loading-wrapper",
+                                children=dcc.Graph(
+                                    id="real-graph",
+                                    config={"displayModeBar": False},
+                                    className="neon-graph",
+                                    style={"height": "320px"},
+                                    figure=_placeholder_figure(
+                                        "Real Wealth Development"
+                                    ),
+                                ),
+                            ),
+                        ],
+                        lg=8,
+                        md=12,
+                        className="chart-panel neon-panel p-3 rounded-3",
+                    ),
+                ],
+                className="g-3 layout-row",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.H3("Scenario Summary", className="section-title"),
                             dbc.Table(
                                 id="summary-table",
                                 bordered=True,
@@ -384,16 +475,16 @@ def serve_layout() -> dbc.Container:
                             html.H3("Scenario Details", className="mt-4 section-title"),
                             html.Div(id="scenario-details"),
                             html.H3(
-                                "Average Yearly Growth Rates",
+                                "Average Market Growth",
                                 className="mt-4 section-title",
                             ),
                             html.Div(id="growth-rates"),
                         ],
-                        md=8,
-                        className="graph-panel neon-panel p-3 rounded-3 h-100",
-                    ),
+                        width=12,
+                        className="detail-panel neon-panel p-3 rounded-3",
+                    )
                 ],
-                className="g-3 mt-2 align-items-stretch",
+                className="g-3 layout-row",
             ),
         ],
         fluid=True,

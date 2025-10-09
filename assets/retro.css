@@ -159,6 +159,20 @@ body {
   backdrop-filter: blur(6px);
 }
 
+.layout-row {
+  margin-top: 1.5rem;
+}
+
+.layout-row:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.callout-panel,
+.chart-panel,
+.detail-panel {
+  height: 100%;
+}
+
 .graph-section {
   display: flex;
   flex-direction: column;
@@ -369,6 +383,44 @@ body {
   font-size: 0.85rem;
 }
 
+.top-control-row {
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+}
+
+.top-control-cell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 150px;
+}
+
+.top-control-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 12, 32, 0.85);
+  border: 1px solid rgba(79, 99, 255, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  box-shadow: 0 0 10px rgba(79, 99, 255, 0.25);
+  gap: 0.35rem;
+  height: 100%;
+}
+
+.top-control-button {
+  justify-content: flex-end;
+}
+
+.top-control-button .d-grid {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .top-control-row {
+    flex-wrap: wrap;
+  }
+}
+
 .details-placeholder {
   color: #c7d2ff;
   font-weight: 600;
@@ -452,6 +504,23 @@ body {
 .growth-table tbody td {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.growth-cell {
+  text-align: right;
+}
+
+.growth-percent {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.growth-absolute {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .growth-table tbody tr:nth-child(even) td,
