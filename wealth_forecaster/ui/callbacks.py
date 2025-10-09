@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import io
 import json
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Sequence
 
 import dash_bootstrap_components as dbc
 import numpy as np
@@ -67,116 +67,100 @@ def _get_percentiles(metrics: Dict, *keys: str) -> Dict[str, float]:
     }
 
 
-def _compute_cagr(
-    final_value: float, deposits_total: float, horizon_years: float
-) -> Optional[float]:
-    if final_value <= 0 or deposits_total <= 0 or horizon_years <= 0:
-        return None
-    try:
-        years = float(horizon_years)
-        return (final_value / deposits_total) ** (1 / years) - 1
-    except (ZeroDivisionError, ValueError):
-        return None
-
-
 def _build_highlight_widget(
     agg: Dict,
-    cfg: Optional[Dict],
     value_path: Sequence[str],
     income_path: Sequence[str],
-    main_label: str,
+    value_label: str,
     income_label: str,
 ) -> html.Div:
     scenarios = agg.get("scenarios", {}) if isinstance(agg, dict) else {}
-    moderate = scenarios.get("moderate", {}) if isinstance(scenarios, dict) else {}
-    if not isinstance(moderate, dict) or not moderate:
+    if not isinstance(scenarios, dict) or not scenarios:
         return html.Div(
             "Run the simulation to see highlights.",
             className="widget-placeholder",
         )
 
-    moderate_end = _get_percentiles(moderate, *value_path)
-    moderate_income = _get_percentiles(moderate, *income_path)
-    optimistic_end = _get_percentiles(
-        scenarios.get("optimistic", {}), *value_path
-    )
-    pessimistic_end = _get_percentiles(
-        scenarios.get("pessimistic", {}), *value_path
-    )
-
-    horizon_years = 0.0
-    if isinstance(cfg, dict):
-        try:
-            horizon_years = float(cfg.get("horizon_years", 0) or 0)
-        except (TypeError, ValueError):
-            horizon_years = 0.0
-    deposits_total = float(moderate.get("deposits_total", 0.0) or 0.0)
-    cagr_value = _compute_cagr(moderate_end["p50"], deposits_total, horizon_years)
-
-    main_row_children = [
-        html.Span(
-            _format_currency(moderate_end["p50"]), className="widget-main-value"
-        )
+    scenario_cards: List[html.Div] = []
+    scenario_order = [
+        ("optimistic", "Optimistic"),
+        ("moderate", "Moderate"),
+        ("pessimistic", "Pessimistic"),
     ]
-    if cagr_value is not None:
-        main_row_children.append(
-            html.Span(f"{cagr_value * 100:.1f}% CAGR", className="widget-cagr")
-        )
 
-    cagr_rows = []
-    for scenario_id, label in [
-        ("optimistic", "Opt"),
-        ("moderate", "Mod"),
-        ("pessimistic", "Pes"),
-    ]:
-        scenario_metrics = scenarios.get(scenario_id, {}) if isinstance(scenarios, dict) else {}
+    for scenario_id, title in scenario_order:
+        scenario_metrics = scenarios.get(scenario_id, {})
         if not isinstance(scenario_metrics, dict) or not scenario_metrics:
             continue
-        deposits = float(scenario_metrics.get("deposits_total", 0.0) or 0.0)
+
         end_stats = _get_percentiles(scenario_metrics, *value_path)
-        cagr_val = _compute_cagr(end_stats["p50"], deposits, horizon_years)
-        if cagr_val is None:
-            text = f"{label} CAGR: —"
+        income_stats = _get_percentiles(scenario_metrics, *income_path)
+        deposits_stats = scenario_metrics.get("deposits_distribution", {})
+        deposits_median = float(
+            deposits_stats.get("p50", scenario_metrics.get("deposits_total", 0.0)) or 0.0
+        )
+        capital_gain = end_stats["p50"] - deposits_median
+        income_median = income_stats["p50"]
+        market_growth = scenario_metrics.get("market_growth_annual")
+        if market_growth is None:
+            market_growth_text = "—"
         else:
-            text = f"{label} CAGR: {cagr_val * 100:.1f}%"
-        cagr_rows.append(html.Span(text))
+            market_growth_text = f"{market_growth * 100:.2f}% p.a."
+
+        card = html.Div(
+            [
+                html.Div(title, className="widget-scenario-title"),
+                html.Div(
+                    [
+                        html.Span(_format_currency(end_stats["p50"]), className="widget-scenario-value"),
+                        html.Small(value_label, className="widget-scenario-label"),
+                    ],
+                    className="widget-scenario-main",
+                ),
+                html.Ul(
+                    [
+                        html.Li(
+                            [
+                                html.Span("Paid in"),
+                                html.Span(_format_currency(deposits_median)),
+                            ]
+                        ),
+                        html.Li(
+                            [
+                                html.Span("Capital gains"),
+                                html.Span(_format_currency(capital_gain)),
+                            ]
+                        ),
+                        html.Li(
+                            [
+                                html.Span(income_label),
+                                html.Span(f"{_format_currency(income_median)}/mo"),
+                            ]
+                        ),
+                        html.Li(
+                            [
+                                html.Span("Avg market growth"),
+                                html.Span(market_growth_text),
+                            ]
+                        ),
+                    ],
+                    className="widget-scenario-metrics",
+                ),
+            ],
+            className=f"widget-scenario-card scenario-{scenario_id}",
+        )
+
+        scenario_cards.append(card)
+
+    if not scenario_cards:
+        return html.Div(
+            "Run the simulation to see highlights.",
+            className="widget-placeholder",
+        )
 
     return html.Div(
-        [
-            html.Div(
-                [
-                    html.Span(
-                        f"Opt median: {_format_currency(optimistic_end['p50'])}"
-                    ),
-                    html.Span(
-                        f"Pes median: {_format_currency(pessimistic_end['p50'])}"
-                    ),
-                ],
-                className="widget-upper",
-            ),
-            html.Div(
-                [
-                    html.Div(main_label, className="widget-main-label"),
-                    html.Div(main_row_children, className="widget-main-row"),
-                    html.Div(
-                        f"{income_label}: {_format_currency(moderate_income['p50'])}/mo",
-                        className="widget-secondary-value",
-                    ),
-                ]
-            ),
-            html.Div(
-                [
-                    html.Span(
-                        f"p90: {_format_currency(moderate_end['p90'])}"
-                    ),
-                    html.Span(
-                        f"p10: {_format_currency(moderate_end['p10'])}"
-                    ),
-                ],
-                className="widget-percentiles",
-            ),
-            html.Div(cagr_rows, className="widget-cagr-list") if cagr_rows else None,
-        ]
+        scenario_cards,
+        className="widget-scenario-grid",
     )
 
 
@@ -690,19 +674,17 @@ def register_callbacks(app):
             )
             nominal_placeholder = _build_highlight_widget(
                 {},
-                None,
                 ("end_nominal",),
                 ("perpetuity", "nominal", "net"),
-                "Moderate median end",
-                "Perpetual net income",
+                "Median end wealth",
+                "Net perpetuity income",
             )
             real_placeholder = _build_highlight_widget(
                 {},
-                None,
                 ("end_real",),
                 ("perpetuity", "real", "net"),
-                "Moderate median real end",
-                "Perpetual net income (real)",
+                "Median real end wealth",
+                "Real net perpetuity",
             )
             growth_placeholder = _build_growth_rates_table(pd.DataFrame())
             return (
@@ -727,22 +709,19 @@ def register_callbacks(app):
         details = _build_scenario_details(data.get("agg", {}))
         growth_rates = _build_growth_rates_table(df)
         agg = data.get("agg", {})
-        cfg = data.get("config")
         widget_nominal = _build_highlight_widget(
             agg,
-            cfg,
             ("end_nominal",),
             ("perpetuity", "nominal", "net"),
-            "Moderate median end",
-            "Perpetual net income",
+            "Median end wealth",
+            "Net perpetuity income",
         )
         widget_real = _build_highlight_widget(
             agg,
-            cfg,
             ("end_real",),
             ("perpetuity", "real", "net"),
-            "Moderate median real end",
-            "Perpetual net income (real)",
+            "Median real end wealth",
+            "Real net perpetuity",
         )
         warnings = data.get("warnings", [])
         if warnings:
@@ -783,7 +762,8 @@ def register_callbacks(app):
         df = pd.DataFrame(data["paths"])
         df["date"] = pd.to_datetime(df["date"])
         agg = data.get("agg", {})
+        cfg = data.get("config") if isinstance(data, dict) else None
         buffer = io.BytesIO()
-        export_xlsx(df, agg, buffer)
+        export_xlsx(df, agg, buffer, config=cfg)
         buffer.seek(0)
         return dcc.send_bytes(buffer.read, filename="wealth_forecast.xlsx")

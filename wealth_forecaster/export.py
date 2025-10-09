@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, IO, Union
+from typing import Dict, IO, List, Tuple, Union
 
 import pandas as pd
 
@@ -26,7 +26,23 @@ def _pivot_paths(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
 PathLike = Union[str, Path, IO[bytes]]
 
 
-def export_xlsx(df_paths: pd.DataFrame, agg: Dict, path: PathLike) -> None:
+def _flatten_config(cfg: Dict, prefix: str = "") -> List[Tuple[str, object]]:
+    items: List[Tuple[str, object]] = []
+    for key, value in sorted(cfg.items()):
+        full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
+        if isinstance(value, dict):
+            items.extend(_flatten_config(value, full_key))
+        else:
+            items.append((full_key, value))
+    return items
+
+
+def export_xlsx(
+    df_paths: pd.DataFrame,
+    agg: Dict,
+    path: PathLike,
+    config: Dict | None = None,
+) -> None:
     writer: pd.ExcelWriter
     if hasattr(path, "write"):
         writer = pd.ExcelWriter(path, engine="xlsxwriter")
@@ -38,16 +54,28 @@ def export_xlsx(df_paths: pd.DataFrame, agg: Dict, path: PathLike) -> None:
     nominal = _pivot_paths(df_paths, "value_nom")
     real = _pivot_paths(df_paths, "value_real")
 
-    agg_df = pd.DataFrame(agg["scenarios"]).T
-    overall = pd.Series(agg["overall"], name="overall").to_frame()
+    scenarios = agg.get("scenarios", {}) if isinstance(agg, dict) else {}
+    agg_df = pd.DataFrame(scenarios).T if scenarios else pd.DataFrame()
+    overall_data = agg.get("overall") if isinstance(agg, dict) else None
+    overall = (
+        pd.Series(overall_data, name="overall").to_frame()
+        if isinstance(overall_data, dict) and overall_data
+        else pd.DataFrame()
+    )
     meta = agg.get("meta", {})
 
     with writer:
         df_paths.to_excel(writer, sheet_name="Raw Paths", index=False)
         nominal.to_excel(writer, sheet_name="Nominal Paths")
         real.to_excel(writer, sheet_name="Real Paths")
-        agg_df.to_excel(writer, sheet_name="Aggregates")
-        overall.to_excel(writer, sheet_name="Overall")
+        if not agg_df.empty:
+            agg_df.to_excel(writer, sheet_name="Aggregates")
+        if not overall.empty:
+            overall.to_excel(writer, sheet_name="Overall")
+        if config:
+            config_rows = _flatten_config(config)
+            config_df = pd.DataFrame(config_rows, columns=["parameter", "value"])
+            config_df.to_excel(writer, sheet_name="Inputs", index=False)
         if meta:
             meta_copy = dict(meta)
             config_json = meta_copy.pop("config_json", None)
