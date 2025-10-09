@@ -1,52 +1,28 @@
-"""Quick test to verify the app loads and simulations work."""
-from wealth_forecaster.config import default_config, canonicalize
-from wealth_forecaster.simulate import simulate_paths
+"""Quick test to verify the simulation pipeline produces results."""
+
+import pandas as pd
+
+from wealth_forecaster.config import canonicalize, default_config
 from wealth_forecaster.metrics import aggregate
+from wealth_forecaster.simulate import simulate_paths
+
 
 def test_basic_simulation():
-    """Test that a basic simulation runs without errors."""
-    print("Testing basic simulation...")
-    
-    # Get default config
     cfg = canonicalize(default_config())
-    
-    # Run a small simulation
-    cfg['runs_per_scenario'] = 10  # Small number for quick test
-    
-    print(f"Running simulation with {cfg['runs_per_scenario']} runs per scenario...")
-    print(f"Start date: {cfg['start_date']}")
-    print(f"Horizon: {cfg['horizon_years']} years")
-    
-    # Run simulation
-    results = simulate_paths(cfg)
-    
-    print(f"\nSimulation completed!")
-    print(f"Scenarios generated: {list(results.keys())}")
-    
-    # Check results structure
-    for scenario, data in results.items():
-        print(f"\nScenario: {scenario}")
-        print(f"  - Nominal wealth shape: {data['nominal_wealth'].shape}")
-        print(f"  - Real wealth shape: {data['real_wealth'].shape}")
-        print(f"  - Time points shape: {data['time'].shape}")
-    
-    # Test aggregation
-    print("\nTesting metrics aggregation...")
-    metrics = aggregate(results)
-    
-    print("Aggregation successful!")
-    print(f"Metrics keys: {list(metrics.keys())}")
-    
-    for scenario in metrics:
-        if scenario in results:
-            final_nominal = metrics[scenario]['nominal']['final']
-            print(f"\n{scenario.title()} scenario final nominal wealth:")
-            print(f"  - p10: ${final_nominal.get('p10', 0):,.0f}")
-            print(f"  - p50: ${final_nominal.get('p50', 0):,.0f}")
-            print(f"  - p90: ${final_nominal.get('p90', 0):,.0f}")
-    
-    print("\n✅ All tests passed!")
-    return True
+    cfg["runs_per_scenario"] = 10
 
-if __name__ == "__main__":
-    test_basic_simulation()
+    frames = []
+    for scenario in cfg["scenarios"]:
+        df = simulate_paths(cfg, scenario)
+        assert not df.empty
+        assert {"date", "value_nom", "value_real"}.issubset(df.columns)
+        frames.append(df)
+
+    df_all = pd.concat(frames, ignore_index=True)
+    agg = aggregate(
+        df_all,
+        cfg["costs_taxes"]["withholding_tax_rate"],
+        cfg["withdrawal_params"],
+    )
+
+    assert agg["scenarios"], "Expected scenario summaries in aggregate output"

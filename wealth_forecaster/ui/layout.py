@@ -144,7 +144,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                                 type="number",
                                 value=cash.get("initial", 0.0),
                                 min=0,
-                                step=1000,
+                                step=1,
                             ),
                         ],
                         md=6,
