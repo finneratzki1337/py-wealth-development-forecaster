@@ -45,10 +45,13 @@ def _estimate_rates(df: pd.DataFrame) -> tuple[float, float]:
     for _key, group in df_sorted.groupby(group_cols):
         if group.empty:
             continue
-        tail = group.tail(min(60, len(group)))
-        monthly_returns.extend(tail["r_net"].astype(float).tolist())
+        # Use the full history of each run so the geometric mean reflects the
+        # long-term growth rate implied by the simulated path.  Limiting the
+        # sample to only the tail months underestimates scenarios where early
+        # returns were materially different from the later ones.
+        monthly_returns.extend(group["r_net"].astype(float).tolist())
         inflation_series = (
-            tail["cpi_cum"].astype(float).pct_change().dropna().tolist()
+            group["cpi_cum"].astype(float).pct_change().dropna().tolist()
         )
         monthly_inflation.extend(inflation_series)
 
