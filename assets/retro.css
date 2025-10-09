@@ -12,6 +12,7 @@ body {
   background: radial-gradient(circle at top left, #1f2254 0%, #080b1c 60%, #040613 100%);
   color: #f4f4f4;
   font-family: "Courier New", monospace;
+  font-weight: 500;
 }
 
 .app-shell {
@@ -34,11 +35,13 @@ body {
 .app-title {
   font-size: 2rem;
   text-shadow: 0 0 14px rgba(255, 110, 199, 0.65);
+  font-weight: 700;
 }
 
 .section-title {
   font-size: 1.05rem;
   color: var(--accent-cyan);
+  font-weight: 600;
 }
 
 .neon-accent {
@@ -50,6 +53,7 @@ body {
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 .compact-row > [class*="col"] {
@@ -62,6 +66,13 @@ body {
   background-color: rgba(8, 12, 32, 0.9);
   border-color: rgba(79, 99, 255, 0.5);
   color: #f4f4f4;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.6rem;
+  border-width: 1px;
+}
+
+.control-panel .form-control {
+  height: calc(1.6em + 0.7rem + 2px);
 }
 
 .control-panel .form-check-label {
@@ -69,6 +80,7 @@ body {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 .control-panel .form-control:focus {
@@ -88,6 +100,7 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
+  font-weight: 700;
 }
 
 .neon-button.primary-button {
@@ -153,25 +166,32 @@ body {
 }
 
 .neon-table {
-  background: rgba(13, 16, 38, 0.92);
-  border-color: rgba(79, 99, 255, 0.45);
-  color: #f4f4f4;
+  background: rgba(20, 26, 62, 0.96);
+  border-color: rgba(79, 99, 255, 0.6);
+  color: #fdfcff;
+  box-shadow: 0 0 12px rgba(45, 226, 230, 0.25);
 }
 
 .neon-table thead th {
-  background: rgba(79, 99, 255, 0.25);
-  color: var(--accent-yellow);
-  border-color: rgba(79, 99, 255, 0.45);
+  background: linear-gradient(90deg, rgba(45, 226, 230, 0.6) 0%, rgba(255, 110, 199, 0.45) 100%);
+  color: #0e132d;
+  border-color: rgba(79, 99, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 700;
 }
 
 .neon-table tbody tr {
-  border-color: rgba(79, 99, 255, 0.12);
+  border-color: rgba(79, 99, 255, 0.22);
 }
 
 .neon-table tbody tr:hover {
-  background: rgba(45, 226, 230, 0.12);
+  background: rgba(255, 110, 199, 0.18);
+}
+
+.neon-table tbody td {
+  color: #f9f9ff;
+  font-weight: 600;
 }
 
 .percentile-block {
@@ -181,12 +201,13 @@ body {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-muted);
+  color: #c7d2ff;
+  font-weight: 600;
 }
 
 .summary-row th {
   color: var(--accent-yellow);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .summary-row.overall-row {
@@ -198,8 +219,14 @@ body {
   color: var(--text-muted);
 }
 
+.button-row .btn {
+  min-height: 2.25rem;
+}
+
 .details-placeholder {
-  color: var(--text-muted);
+  color: #c7d2ff;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   padding: 0.75rem;
   background: rgba(79, 99, 255, 0.12);
   border-radius: 0.5rem;
