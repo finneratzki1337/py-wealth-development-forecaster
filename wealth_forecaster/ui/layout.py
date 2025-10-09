@@ -312,36 +312,62 @@ def serve_layout() -> dbc.Container:
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        dcc.Loading(
-                                            id="nominal-loading",
-                                            type="default",
-                                            className="graph-loading-wrapper",
-                                            children=dcc.Graph(
-                                                id="nominal-graph",
-                                                config={"displayModeBar": False},
-                                                className="neon-graph",
-                                                style={"height": "320px"},
-                                                figure=_placeholder_figure(
-                                                    "Nominal Wealth Development"
+                                        html.Div(
+                                            [
+                                                dcc.Loading(
+                                                    id="nominal-loading",
+                                                    type="default",
+                                                    className="graph-loading-wrapper",
+                                                    children=dcc.Graph(
+                                                        id="nominal-graph",
+                                                        config={"displayModeBar": False},
+                                                        className="neon-graph",
+                                                        style={"height": "320px"},
+                                                        figure=_placeholder_figure(
+                                                            "Nominal Wealth Development"
+                                                        ),
+                                                    ),
                                                 ),
-                                            ),
+                                                html.Div(
+                                                    id="nominal-widget",
+                                                    className="graph-highlight-widget",
+                                                    children=html.Div(
+                                                        "Run the simulation to see highlights.",
+                                                        className="widget-placeholder",
+                                                    ),
+                                                ),
+                                            ],
+                                            className="graph-with-widget",
                                         ),
                                         md=12,
                                     ),
                                     dbc.Col(
-                                        dcc.Loading(
-                                            id="real-loading",
-                                            type="default",
-                                            className="graph-loading-wrapper",
-                                            children=dcc.Graph(
-                                                id="real-graph",
-                                                config={"displayModeBar": False},
-                                                className="neon-graph",
-                                                style={"height": "320px"},
-                                                figure=_placeholder_figure(
-                                                    "Real Wealth Development"
+                                        html.Div(
+                                            [
+                                                dcc.Loading(
+                                                    id="real-loading",
+                                                    type="default",
+                                                    className="graph-loading-wrapper",
+                                                    children=dcc.Graph(
+                                                        id="real-graph",
+                                                        config={"displayModeBar": False},
+                                                        className="neon-graph",
+                                                        style={"height": "320px"},
+                                                        figure=_placeholder_figure(
+                                                            "Real Wealth Development"
+                                                        ),
+                                                    ),
                                                 ),
-                                            ),
+                                                html.Div(
+                                                    id="real-widget",
+                                                    className="graph-highlight-widget",
+                                                    children=html.Div(
+                                                        "Run the simulation to see highlights.",
+                                                        className="widget-placeholder",
+                                                    ),
+                                                ),
+                                            ],
+                                            className="graph-with-widget",
                                         ),
                                         md=12,
                                     ),

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import io
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence
 
 import dash_bootstrap_components as dbc
 import numpy as np
@@ -65,6 +65,97 @@ def _get_percentiles(metrics: Dict, *keys: str) -> Dict[str, float]:
         "p50": float(cur.get("p50", 0.0)),
         "p90": float(cur.get("p90", 0.0)),
     }
+
+
+def _compute_cagr(
+    final_value: float, deposits_total: float, horizon_years: float
+) -> Optional[float]:
+    if final_value <= 0 or deposits_total <= 0 or horizon_years <= 0:
+        return None
+    try:
+        years = float(horizon_years)
+        return (final_value / deposits_total) ** (1 / years) - 1
+    except (ZeroDivisionError, ValueError):
+        return None
+
+
+def _build_highlight_widget(
+    agg: Dict,
+    cfg: Optional[Dict],
+    value_path: Sequence[str],
+    income_path: Sequence[str],
+    main_label: str,
+    income_label: str,
+) -> html.Div:
+    scenarios = agg.get("scenarios", {}) if isinstance(agg, dict) else {}
+    moderate = scenarios.get("moderate", {}) if isinstance(scenarios, dict) else {}
+    if not isinstance(moderate, dict) or not moderate:
+        return html.Div(
+            "Run the simulation to see highlights.", className="widget-placeholder"
+        )
+
+    moderate_end = _get_percentiles(moderate, *value_path)
+    moderate_income = _get_percentiles(moderate, *income_path)
+    optimistic_end = _get_percentiles(
+        scenarios.get("optimistic", {}), *value_path
+    )
+    pessimistic_end = _get_percentiles(
+        scenarios.get("pessimistic", {}), *value_path
+    )
+
+    horizon_years = 0.0
+    if isinstance(cfg, dict):
+        try:
+            horizon_years = float(cfg.get("horizon_years", 0) or 0)
+        except (TypeError, ValueError):
+            horizon_years = 0.0
+    deposits_total = float(moderate.get("deposits_total", 0.0) or 0.0)
+    cagr_value = _compute_cagr(moderate_end["p50"], deposits_total, horizon_years)
+
+    main_row_children = [
+        html.Span(_format_currency(moderate_end["p50"]), className="widget-main-value")
+    ]
+    if cagr_value is not None:
+        main_row_children.append(
+            html.Span(f"{cagr_value * 100:.1f}% CAGR", className="widget-cagr")
+        )
+
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Span(
+                        f"Opt median: {_format_currency(optimistic_end['p50'])}"
+                    ),
+                    html.Span(
+                        f"Pes median: {_format_currency(pessimistic_end['p50'])}"
+                    ),
+                ],
+                className="widget-upper",
+            ),
+            html.Div(
+                [
+                    html.Div(main_label, className="widget-main-label"),
+                    html.Div(main_row_children, className="widget-main-row"),
+                    html.Div(
+                        f"{income_label}: {_format_currency(moderate_income['p50'])}/mo",
+                        className="widget-secondary-value",
+                    ),
+                ]
+            ),
+            html.Div(
+                [
+                    html.Span(
+                        f"p90: {_format_currency(moderate_end['p90'])}"
+                    ),
+                    html.Span(
+                        f"p10: {_format_currency(moderate_end['p10'])}"
+                    ),
+                ],
+                className="widget-percentiles",
+            ),
+        ]
+    )
 
 
 def _config_from_inputs(values: Dict[str, Any]) -> Dict[str, Any]:
@@ -444,6 +535,8 @@ def register_callbacks(app):
         Output("summary-table", "children"),
         Output("warning-banner", "children"),
         Output("scenario-details", "children"),
+        Output("nominal-widget", "children"),
+        Output("real-widget", "children"),
         Input("results-store", "data"),
     )
     def update_outputs(data):
@@ -453,7 +546,31 @@ def register_callbacks(app):
                 "Run the simulation to view scenario details.",
                 className="details-placeholder",
             )
-            return empty_fig, empty_fig, [], None, details_placeholder
+            nominal_placeholder = _build_highlight_widget(
+                {},
+                None,
+                ("end_nominal",),
+                ("perpetuity", "nominal", "net"),
+                "Moderate median end",
+                "Perpetual net income",
+            )
+            real_placeholder = _build_highlight_widget(
+                {},
+                None,
+                ("end_real",),
+                ("perpetuity", "real", "net"),
+                "Moderate median real end",
+                "Perpetual net income (real)",
+            )
+            return (
+                empty_fig,
+                empty_fig,
+                [],
+                None,
+                details_placeholder,
+                nominal_placeholder,
+                real_placeholder,
+            )
         paths = data.get("paths", [])
         if paths:
             df = pd.DataFrame(paths)
@@ -464,6 +581,24 @@ def register_callbacks(app):
         fig_real = _make_figure(df, "value_real", "Real Wealth Development")
         table_children = _build_summary_table(data.get("agg", {}))
         details = _build_scenario_details(data.get("agg", {}))
+        agg = data.get("agg", {})
+        cfg = data.get("config")
+        widget_nominal = _build_highlight_widget(
+            agg,
+            cfg,
+            ("end_nominal",),
+            ("perpetuity", "nominal", "net"),
+            "Moderate median end",
+            "Perpetual net income",
+        )
+        widget_real = _build_highlight_widget(
+            agg,
+            cfg,
+            ("end_real",),
+            ("perpetuity", "real", "net"),
+            "Moderate median real end",
+            "Perpetual net income (real)",
+        )
         warnings = data.get("warnings", [])
         if warnings:
             banner = html.Div(
@@ -480,7 +615,15 @@ def register_callbacks(app):
             )
         else:
             banner = None
-        return fig_nom, fig_real, table_children, banner, details
+        return (
+            fig_nom,
+            fig_real,
+            table_children,
+            banner,
+            details,
+            widget_nominal,
+            widget_real,
+        )
 
     @app.callback(
         Output("download-xlsx", "data"),
