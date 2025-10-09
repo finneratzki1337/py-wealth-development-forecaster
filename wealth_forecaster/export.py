@@ -43,6 +43,7 @@ def export_xlsx(
     path: PathLike,
     config: Dict | None = None,
 ) -> None:
+    """Export simulation results to Excel with monthly portfolio values and parameters."""
     writer: pd.ExcelWriter
     if hasattr(path, "write"):
         writer = pd.ExcelWriter(path, engine="xlsxwriter")
@@ -51,8 +52,15 @@ def export_xlsx(
         path.parent.mkdir(parents=True, exist_ok=True)
         writer = pd.ExcelWriter(path, engine="xlsxwriter")
 
-    nominal = _pivot_paths(df_paths, "value_nom")
-    real = _pivot_paths(df_paths, "value_real")
+    # Ensure date column is datetime
+    if not df_paths.empty and "date" in df_paths.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df_paths["date"]):
+            df_paths = df_paths.copy()
+            df_paths["date"] = pd.to_datetime(df_paths["date"])
+
+    # Create pivot tables for monthly values
+    nominal = _pivot_paths(df_paths, "value_nom") if not df_paths.empty else pd.DataFrame()
+    real = _pivot_paths(df_paths, "value_real") if not df_paths.empty else pd.DataFrame()
 
     scenarios = agg.get("scenarios", {}) if isinstance(agg, dict) else {}
     agg_df = pd.DataFrame(scenarios).T if scenarios else pd.DataFrame()
@@ -65,17 +73,39 @@ def export_xlsx(
     meta = agg.get("meta", {})
 
     with writer:
-        df_paths.to_excel(writer, sheet_name="Raw Paths", index=False)
-        nominal.to_excel(writer, sheet_name="Nominal Paths")
-        real.to_excel(writer, sheet_name="Real Paths")
-        if not agg_df.empty:
-            agg_df.to_excel(writer, sheet_name="Aggregates")
-        if not overall.empty:
-            overall.to_excel(writer, sheet_name="Overall")
+        # 1. Parameters/Inputs first for reproducibility
         if config:
             config_rows = _flatten_config(config)
-            config_df = pd.DataFrame(config_rows, columns=["parameter", "value"])
-            config_df.to_excel(writer, sheet_name="Inputs", index=False)
+            config_df = pd.DataFrame(config_rows, columns=["Parameter", "Value"])
+            config_df.to_excel(writer, sheet_name="Parameters", index=False)
+            # Auto-adjust column widths
+            worksheet = writer.sheets["Parameters"]
+            worksheet.set_column('A:A', 35)
+            worksheet.set_column('B:B', 25)
+        
+        # 2. Monthly portfolio values (pivoted by scenario and run)
+        if not nominal.empty:
+            nominal.to_excel(writer, sheet_name="Monthly Nominal Values")
+            worksheet = writer.sheets["Monthly Nominal Values"]
+            worksheet.set_column('A:A', 12)  # Date column
+        
+        if not real.empty:
+            real.to_excel(writer, sheet_name="Monthly Real Values")
+            worksheet = writer.sheets["Monthly Real Values"]
+            worksheet.set_column('A:A', 12)  # Date column
+        
+        # 3. Summary statistics
+        if not agg_df.empty:
+            agg_df.to_excel(writer, sheet_name="Summary Statistics")
+        
+        if not overall.empty:
+            overall.to_excel(writer, sheet_name="Overall Statistics")
+        
+        # 4. Raw data (all individual paths)
+        if not df_paths.empty:
+            df_paths.to_excel(writer, sheet_name="Raw Simulation Paths", index=False)
+        
+        # 5. Metadata
         if meta:
             meta_copy = dict(meta)
             config_json = meta_copy.pop("config_json", None)

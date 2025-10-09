@@ -38,7 +38,12 @@ def _hex_to_rgba(hex_color: str, alpha: float) -> str:
 
 
 def _format_currency(value: float) -> str:
-    return f"${value:,.0f}"
+    if value is None:
+        return "$0"
+    try:
+        return f"${float(value):,.0f}"
+    except (ValueError, TypeError):
+        return "$0"
 
 
 def _percentile_block(stats: Dict[str, float]) -> html.Div:
@@ -60,10 +65,21 @@ def _get_percentiles(metrics: Dict, *keys: str) -> Dict[str, float]:
         cur = cur.get(key, {})
     if not isinstance(cur, dict):
         return {"p10": 0.0, "p50": 0.0, "p90": 0.0}
+    
+    # Helper to safely extract float values, handling None
+    def safe_get(key: str, default: float = 0.0) -> float:
+        val = cur.get(key, default)
+        if val is None:
+            return default
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return default
+    
     return {
-        "p10": float(cur.get("p10", 0.0)),
-        "p50": float(cur.get("p50", 0.0)),
-        "p90": float(cur.get("p90", 0.0)),
+        "p10": safe_get("p10", 0.0),
+        "p50": safe_get("p50", 0.0),
+        "p90": safe_get("p90", 0.0),
     }
 
 
@@ -615,6 +631,7 @@ def register_callbacks(app):
     @app.callback(
         Output("results-store", "data"),
         Input("config-store", "data"),
+        prevent_initial_call=True,
     )
     def run_simulation(cfg):
         if not cfg:
@@ -767,13 +784,42 @@ def register_callbacks(app):
         prevent_initial_call=True,
     )
     def export_results(n_clicks, data):
-        if not data or not data.get("paths"):
+        print(f"Export button clicked: {n_clicks}")
+        print(f"Data available: {data is not None}")
+        
+        if not data:
+            print("No data in results-store")
             return no_update
-        df = pd.DataFrame(data["paths"])
-        df["date"] = pd.to_datetime(df["date"])
-        agg = data.get("agg", {})
-        cfg = data.get("config") if isinstance(data, dict) else None
-        buffer = io.BytesIO()
-        export_xlsx(df, agg, buffer, config=cfg)
-        buffer.seek(0)
-        return dcc.send_bytes(buffer.read, filename="wealth_forecast.xlsx")
+            
+        if not data.get("paths"):
+            print("No paths in data")
+            return no_update
+        
+        try:
+            print(f"Number of paths: {len(data['paths'])}")
+            df = pd.DataFrame(data["paths"])
+            print(f"DataFrame shape: {df.shape}")
+            
+            if df.empty:
+                print("DataFrame is empty")
+                return no_update
+            
+            # Convert date column to datetime
+            df["date"] = pd.to_datetime(df["date"])
+            print(f"Date conversion successful")
+            
+            agg = data.get("agg", {})
+            cfg = data.get("config")
+            print(f"Config available: {cfg is not None}")
+            
+            buffer = io.BytesIO()
+            export_xlsx(df, agg, buffer, config=cfg)
+            buffer.seek(0)
+            print(f"Excel file created, size: {len(buffer.getvalue())} bytes")
+            
+            return dcc.send_bytes(buffer.getvalue, filename="wealth_forecast.xlsx")
+        except Exception as e:
+            print(f"Export error: {e}")
+            import traceback
+            traceback.print_exc()
+            return no_update

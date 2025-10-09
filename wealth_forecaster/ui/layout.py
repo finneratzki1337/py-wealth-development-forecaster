@@ -39,88 +39,9 @@ def build_controls(cfg: dict) -> dbc.Col:
     costs = cfg.get("costs_taxes", {})
     inflation = cfg.get("inflation", {})
 
-    return dbc.Col(
+    # Build the collapsible parameters section
+    parameters_content = html.Div(
         [
-            html.Div(
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            html.Div(
-                                [
-                                    dbc.Label("Simulation Seed", className="seed-label-small"),
-                                    dbc.Input(
-                                        id="seed-base",
-                                        type="number",
-                                        value=cfg.get("seed_base", 1000),
-                                        min=1,
-                                        step=1,
-                                        className="seed-input-small",
-                                    ),
-                                ],
-                                className="top-control-card",
-                            ),
-                            width="auto",
-                            className="top-control-cell",
-                        ),
-                        dbc.Col(
-                            html.Div(
-                                [
-                                    dbc.Label("Runs/Scenario", className="seed-label-small"),
-                                    dbc.Input(
-                                        id="runs-per-scenario",
-                                        type="number",
-                                        value=cfg.get("runs_per_scenario", 200),
-                                        min=100,
-                                        step=10,
-                                        className="seed-input-small",
-                                    ),
-                                ],
-                                className="top-control-card",
-                            ),
-                            width="auto",
-                            className="top-control-cell",
-                        ),
-                        dbc.Col(
-                            html.Div(
-                                html.Div(
-                                    dbc.Button(
-                                        "Run Simulation",
-                                        id="run-button",
-                                        color="primary",
-                                        size="sm",
-                                        className="w-100 neon-button primary-button",
-                                    ),
-                                    className="w-100 d-grid",
-                                ),
-                                className="top-control-card top-control-button",
-                            ),
-                            width="auto",
-                            className="top-control-cell",
-                        ),
-                        dbc.Col(
-                            html.Div(
-                                html.Div(
-                                    dbc.Button(
-                                        "Download XLSX",
-                                        id="export-button",
-                                        color="secondary",
-                                        size="sm",
-                                        className="w-100 neon-button secondary-button",
-                                    ),
-                                    className="w-100 d-grid",
-                                ),
-                                className="top-control-card top-control-button",
-                            ),
-                            width="auto",
-                            className="top-control-cell",
-                        ),
-                    ],
-                    className="g-2 mb-2 align-items-stretch button-row top-control-row",
-                ),
-                className="mb-3",
-            ),
-            html.Hr(),
-            html.H2("Parameters", className="panel-title mb-3 neon-accent"),
             html.Div(
                 dbc.Row(
                     [
@@ -256,6 +177,101 @@ def build_controls(cfg: dict) -> dbc.Col:
                 ),
                 className="parameter-row-wrapper",
             ),
+        ]
+    )
+
+    return dbc.Col(
+        [
+            dbc.Accordion(
+                [
+                    dbc.AccordionItem(
+                        parameters_content,
+                        title="⚙️ Parameters",
+                        item_id="params-accordion",
+                    ),
+                ],
+                start_collapsed=False,
+                always_open=True,
+                className="parameter-accordion mb-3",
+            ),
+            html.Div(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    dbc.Label("Simulation Seed", className="seed-label-small text-center"),
+                                    dbc.Input(
+                                        id="seed-base",
+                                        type="number",
+                                        value=cfg.get("seed_base", 1000),
+                                        min=1,
+                                        step=1,
+                                        className="seed-input-small",
+                                    ),
+                                ],
+                                className="top-control-card",
+                            ),
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    dbc.Label("Runs/Scenario", className="seed-label-small text-center"),
+                                    dbc.Input(
+                                        id="runs-per-scenario",
+                                        type="number",
+                                        value=cfg.get("runs_per_scenario", 200),
+                                        min=100,
+                                        step=10,
+                                        className="seed-input-small",
+                                    ),
+                                ],
+                                className="top-control-card",
+                            ),
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                html.Div(
+                                    dbc.Button(
+                                        "Run Simulation",
+                                        id="run-button",
+                                        color="primary",
+                                        size="sm",
+                                        className="w-100 neon-button primary-button",
+                                    ),
+                                    className="w-100 d-grid",
+                                ),
+                                className="top-control-card top-control-button",
+                            ),
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                html.Div(
+                                    dbc.Button(
+                                        "Download XLSX",
+                                        id="export-button",
+                                        color="secondary",
+                                        size="sm",
+                                        className="w-100 neon-button secondary-button",
+                                    ),
+                                    className="w-100 d-grid",
+                                ),
+                                className="top-control-card top-control-button",
+                            ),
+                            width="auto",
+                            className="top-control-cell",
+                        ),
+                    ],
+                    className="g-2 mb-2 align-items-stretch button-row top-control-row justify-content-center",
+                ),
+                className="mb-3",
+            ),
         ],
         width=12,
         className="control-panel neon-panel p-3 rounded-3",
@@ -266,7 +282,7 @@ def serve_layout() -> dbc.Container:
     cfg = default_config()
     return dbc.Container(
         [
-            dcc.Store(id="config-store", data=cfg),
+            dcc.Store(id="config-store"),
             dcc.Store(id="results-store"),
             dcc.Download(id="download-xlsx"),
             html.Div(
@@ -285,12 +301,13 @@ def serve_layout() -> dbc.Container:
             ),
             html.Div(id="warning-banner"),
             dbc.Row([build_controls(cfg)], className="g-3 layout-row"),
+            html.H2("Nominal Growth", className="main-section-heading mt-4 mb-3"),
             dbc.Row(
                 [
                     dbc.Col(
                         [
                             html.H3(
-                                "Nominal Growth Highlights",
+                                "Highlights",
                                 className="section-title",
                             ),
                             html.Div(
@@ -309,7 +326,7 @@ def serve_layout() -> dbc.Container:
                     dbc.Col(
                         [
                             html.H3(
-                                "Nominal Wealth Development",
+                                "Wealth Development",
                                 className="section-title",
                             ),
                             dcc.Loading(
@@ -334,12 +351,13 @@ def serve_layout() -> dbc.Container:
                 ],
                 className="g-3 layout-row align-items-stretch highlight-row",
             ),
+            html.H2("Real Growth", className="main-section-heading mt-4 mb-3"),
             dbc.Row(
                 [
                     dbc.Col(
                         [
                             html.H3(
-                                "Real Growth Highlights",
+                                "Highlights",
                                 className="section-title",
                             ),
                             html.Div(
@@ -358,7 +376,7 @@ def serve_layout() -> dbc.Container:
                     dbc.Col(
                         [
                             html.H3(
-                                "Real Wealth Development",
+                                "Wealth Development",
                                 className="section-title",
                             ),
                             dcc.Loading(
