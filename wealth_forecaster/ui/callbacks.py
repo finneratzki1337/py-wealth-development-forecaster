@@ -73,6 +73,8 @@ def _build_highlight_widget(
     income_path: Sequence[str],
     value_label: str,
     income_label: str,
+    growth_key: str,
+    growth_label: str,
 ) -> html.Div:
     scenarios = agg.get("scenarios", {}) if isinstance(agg, dict) else {}
     if not isinstance(scenarios, dict) or not scenarios:
@@ -101,7 +103,7 @@ def _build_highlight_widget(
         )
         capital_gain = end_stats["p50"] - deposits_median
         income_median = income_stats["p50"]
-        market_growth = scenario_metrics.get("market_growth_annual")
+        market_growth = scenario_metrics.get(growth_key)
         if market_growth is None:
             market_growth_text = "—"
         else:
@@ -139,7 +141,7 @@ def _build_highlight_widget(
                         ),
                         html.Li(
                             [
-                                html.Span("Avg market growth"),
+                                html.Span(growth_label),
                                 html.Span(market_growth_text),
                             ]
                         ),
@@ -678,6 +680,8 @@ def register_callbacks(app):
                 ("perpetuity", "nominal", "net"),
                 "Median end wealth",
                 "Net perpetuity income",
+                "market_growth_annual",
+                "Avg nominal growth",
             )
             real_placeholder = _build_highlight_widget(
                 {},
@@ -685,6 +689,8 @@ def register_callbacks(app):
                 ("perpetuity", "real", "net"),
                 "Median real end wealth",
                 "Real net perpetuity",
+                "market_growth_real_annual",
+                "Avg real growth",
             )
             growth_placeholder = _build_growth_rates_table(pd.DataFrame())
             return (
@@ -715,6 +721,8 @@ def register_callbacks(app):
             ("perpetuity", "nominal", "net"),
             "Median end wealth",
             "Net perpetuity income",
+            "market_growth_annual",
+            "Avg nominal growth",
         )
         widget_real = _build_highlight_widget(
             agg,
@@ -722,6 +730,8 @@ def register_callbacks(app):
             ("perpetuity", "real", "net"),
             "Median real end wealth",
             "Real net perpetuity",
+            "market_growth_real_annual",
+            "Avg real growth",
         )
         warnings = data.get("warnings", [])
         if warnings:

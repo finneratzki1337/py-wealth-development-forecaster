@@ -269,9 +269,19 @@ def serve_layout() -> dbc.Container:
             dcc.Store(id="config-store", data=cfg),
             dcc.Store(id="results-store"),
             dcc.Download(id="download-xlsx"),
-            html.H1(
-                "Wealth Development Forecaster",
-                className="app-title mb-3 neon-accent",
+            html.Div(
+                [
+                    html.Img(
+                        src="/assets/timo_logo.png",
+                        alt="Timo logo",
+                        className="app-logo",
+                    ),
+                    html.H1(
+                        "Timo's Wealth Forecaster",
+                        className="app-title neon-accent mb-0",
+                    ),
+                ],
+                className="app-header mb-3",
             ),
             html.Div(id="warning-banner"),
             dbc.Row([build_controls(cfg)], className="g-3 layout-row"),
@@ -294,7 +304,7 @@ def serve_layout() -> dbc.Container:
                         ],
                         lg=4,
                         md=12,
-                        className="callout-panel neon-panel p-3 rounded-3",
+                        className="callout-panel neon-panel p-3 rounded-3 h-100",
                     ),
                     dbc.Col(
                         [
@@ -319,10 +329,10 @@ def serve_layout() -> dbc.Container:
                         ],
                         lg=8,
                         md=12,
-                        className="chart-panel neon-panel p-3 rounded-3",
+                        className="chart-panel neon-panel p-3 rounded-3 h-100",
                     ),
                 ],
-                className="g-3 layout-row align-items-stretch",
+                className="g-3 layout-row align-items-stretch highlight-row",
             ),
             dbc.Row(
                 [
@@ -343,7 +353,7 @@ def serve_layout() -> dbc.Container:
                         ],
                         lg=4,
                         md=12,
-                        className="callout-panel neon-panel p-3 rounded-3",
+                        className="callout-panel neon-panel p-3 rounded-3 h-100",
                     ),
                     dbc.Col(
                         [
@@ -368,10 +378,10 @@ def serve_layout() -> dbc.Container:
                         ],
                         lg=8,
                         md=12,
-                        className="chart-panel neon-panel p-3 rounded-3",
+                        className="chart-panel neon-panel p-3 rounded-3 h-100",
                     ),
                 ],
-                className="g-3 layout-row align-items-stretch",
+                className="g-3 layout-row align-items-stretch highlight-row",
             ),
             dbc.Row(
                 [
