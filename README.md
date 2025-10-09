@@ -30,3 +30,14 @@ Run the automated tests with:
 ```bash
 pytest
 ```
+
+## Docker
+
+Build and run the Dash application with Docker:
+
+```bash
+docker build -t wealth-forecaster .
+docker run --rm -p 8050:8050 wealth-forecaster
+```
+
+The app will be available at [http://127.0.0.1:8050](http://127.0.0.1:8050).

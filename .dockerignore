@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.log
+.env
+.venv
+.git
+.gitignore
+.DS_Store
+.idea
+/tests/
+manual_test_instructions.md
