@@ -8,14 +8,26 @@ import pandas as pd
 
 
 def _geometric_mean(series: Iterable[float]) -> float:
-    series = list(series)
-    if not series:
+    """Return the geometric mean of the provided returns.
+
+    The previous implementation multiplied all growth factors together before
+    taking the n-th root.  With long simulations (hundreds of runs times
+    decades of months) this intermediate product overflowed to ``inf`` which
+    then propagated into the summary statistics.  Using logarithms keeps the
+    intermediate values in a numerically stable range.
+    """
+
+    values = [float(x) for x in series if x > -1]
+    if not values:
         return 0.0
-    series = [1 + x for x in series if x > -1]
-    if not series:
+
+    log_terms = np.log1p(values)
+    log_terms = log_terms[np.isfinite(log_terms)]
+    if log_terms.size == 0:
         return 0.0
-    product = np.prod(series)
-    return product ** (1 / len(series)) - 1
+
+    mean_log = float(log_terms.mean())
+    return float(np.expm1(mean_log))
 
 
 def _mean_inflation(last_cpi: pd.Series) -> float:
