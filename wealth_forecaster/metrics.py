@@ -70,10 +70,16 @@ def _percentiles(series: Iterable[float]) -> Dict[str, float]:
 
 
 def _build_summary(stats: pd.DataFrame, deposits: float) -> Dict:
+    deposits_series = stats["deposits"]
+    end_nominal = stats["end_nominal"]
+    end_real = stats["end_real"]
     return {
         "deposits_total": float(deposits),
-        "end_nominal": _percentiles(stats["end_nominal"]),
-        "end_real": _percentiles(stats["end_real"]),
+        "deposits_distribution": _percentiles(deposits_series),
+        "end_nominal": _percentiles(end_nominal),
+        "end_real": _percentiles(end_real),
+        "capital_gains_nominal": _percentiles(end_nominal - deposits_series),
+        "capital_gains_real": _percentiles(end_real - deposits_series),
         "perpetuity": {
             "nominal": {
                 "gross": _percentiles(stats["perp_nominal_gross"]),
@@ -177,6 +183,8 @@ def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict
                 "withdrawal_nom_ann_net": float(np.mean(ann_nominal * (1 - tax_rate)) * 12),
                 "withdrawal_real_ann": float(np.mean(ann_real) * 12),
                 "withdrawal_real_ann_net": float(np.mean(ann_real * (1 - tax_rate)) * 12),
+                "market_growth_annual": float((1 + monthly_nom) ** 12 - 1),
+                "market_growth_real_annual": float((1 + monthly_real) ** 12 - 1),
             }
         )
         scenario_summaries[scenario] = summary
@@ -187,6 +195,7 @@ def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict
         avg_dep = float(combined["deposits"].mean())
         avg_end_nom = float(combined["end_nominal"].mean())
         avg_end_real = float(combined["end_real"].mean())
+        monthly_nom_all, monthly_real_all = _estimate_rates(df_paths)
         overall.update(
             {
                 "deposits": avg_dep,
@@ -201,6 +210,8 @@ def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict
                 "withdrawal_nom_ann_net": float(combined["ann_nominal_net"].mean() * 12),
                 "withdrawal_real_ann": float(combined["ann_real_gross"].mean() * 12),
                 "withdrawal_real_ann_net": float(combined["ann_real_net"].mean() * 12),
+                "market_growth_annual": float((1 + monthly_nom_all) ** 12 - 1),
+                "market_growth_real_annual": float((1 + monthly_real_all) ** 12 - 1),
             }
         )
     else:

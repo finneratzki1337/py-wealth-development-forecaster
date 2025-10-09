@@ -252,7 +252,7 @@ def build_controls(cfg: dict) -> dbc.Col:
                             className="parameter-cell",
                         ),
                     ],
-                    className="g-3 parameter-row align-items-start",
+                    className="g-2 parameter-row align-items-start",
                 ),
                 className="parameter-row-wrapper",
             ),
