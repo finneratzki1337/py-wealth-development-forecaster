@@ -173,6 +173,34 @@ body {
   height: 100%;
 }
 
+.callout-panel,
+.chart-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.callout-panel .section-title,
+.chart-panel .section-title {
+  margin-bottom: 0.75rem;
+}
+
+.callout-panel .graph-highlight-widget {
+  flex: 1 1 auto;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.chart-panel .graph-loading-wrapper {
+  flex: 1 1 auto;
+}
+
+.chart-panel .neon-graph {
+  height: 100% !important;
+  min-height: 320px;
+}
+
 .graph-section {
   display: flex;
   flex-direction: column;
@@ -383,16 +411,28 @@ body {
   font-size: 0.85rem;
 }
 
-.top-control-row {
+.top-control-row { 
   flex-wrap: nowrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
+.top-control-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.top-control-row::-webkit-scrollbar-thumb {
+  background: rgba(79, 99, 255, 0.4);
+  border-radius: 999px;
 }
 
 .top-control-cell {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
-  min-width: 150px;
+  flex: 0 0 165px;
+  min-width: 140px;
 }
 
 .top-control-card {
@@ -401,9 +441,9 @@ body {
   background: rgba(8, 12, 32, 0.85);
   border: 1px solid rgba(79, 99, 255, 0.35);
   border-radius: 0.5rem;
-  padding: 0.45rem 0.65rem;
+  padding: 0.35rem 0.55rem;
   box-shadow: 0 0 10px rgba(79, 99, 255, 0.25);
-  gap: 0.35rem;
+  gap: 0.25rem;
   height: 100%;
 }
 
@@ -415,9 +455,93 @@ body {
   margin-top: auto;
 }
 
+.parameter-row-wrapper {
+  margin-bottom: 1.25rem;
+}
+
+.parameter-row {
+  flex-wrap: nowrap;
+  gap: 1rem;
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.parameter-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.parameter-row::-webkit-scrollbar-thumb {
+  background: rgba(79, 99, 255, 0.4);
+  border-radius: 999px;
+}
+
+.parameter-cell {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 230px;
+  min-width: 210px;
+}
+
+.parameter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.1rem;
+}
+
+.parameter-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+.parameter-card .form-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 0.1rem;
+}
+
+.parameter-card .form-control,
+.parameter-card .form-check-input {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.45rem;
+  height: calc(1.5em + 0.5rem + 2px);
+}
+
+.parameter-card .form-check {
+  margin-bottom: 0;
+}
+
+.parameter-card .form-switch .form-check-input {
+  height: 1.1rem;
+  width: 2.2rem;
+}
+
 @media (max-width: 768px) {
   .top-control-row {
     flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .top-control-cell {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  .parameter-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .parameter-cell {
+    flex: 1 1 240px;
+    min-width: 0;
   }
 }
 

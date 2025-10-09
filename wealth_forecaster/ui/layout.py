@@ -121,227 +121,140 @@ def build_controls(cfg: dict) -> dbc.Col:
             ),
             html.Hr(),
             html.H2("Parameters", className="panel-title mb-3 neon-accent"),
-            html.H3("Timeline", className="section-title mt-2 mb-2"),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Start Date (YYYY-MM)"),
-                            dbc.Input(id="start-date", value=cfg.get("start_date", "2025-01")),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=3,
-                        xl=2,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Horizon (years)"),
-                            dbc.Input(
-                                id="horizon-years",
-                                type="number",
-                                value=cfg.get("horizon_years", 30),
-                                min=1,
-                                step=1,
+            html.Div(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    html.Span("Timeline", className="parameter-title"),
+                                    dbc.Label("Start Date (YYYY-MM)"),
+                                    dbc.Input(
+                                        id="start-date",
+                                        value=cfg.get("start_date", "2025-01"),
+                                    ),
+                                    dbc.Label("Horizon (years)"),
+                                    dbc.Input(
+                                        id="horizon-years",
+                                        type="number",
+                                        value=cfg.get("horizon_years", 30),
+                                        min=1,
+                                        step=1,
+                                    ),
+                                ],
+                                className="parameter-card",
                             ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
-            ),
-            html.Hr(),
-            html.H3("Contributions", className="section-title mt-2 mb-2"),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Initial Capital"),
-                            dbc.Input(
-                                id="initial-capital",
-                                type="number",
-                                value=cash.get("initial", 0.0),
-                                min=0,
-                                step=1,
+                            className="parameter-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    html.Span("Contributions", className="parameter-title"),
+                                    dbc.Label("Initial Capital"),
+                                    dbc.Input(
+                                        id="initial-capital",
+                                        type="number",
+                                        value=cash.get("initial", 0.0),
+                                        min=0,
+                                        step=1,
+                                    ),
+                                    dbc.Label("Monthly Contribution"),
+                                    dbc.Input(
+                                        id="monthly-contribution",
+                                        type="number",
+                                        value=cash.get("monthly", 0.0),
+                                        min=0,
+                                        step=100,
+                                    ),
+                                    dbc.Label("Annual Increase (%)"),
+                                    dbc.Input(
+                                        id="annual-increase",
+                                        type="number",
+                                        value=round(cash.get("annual_increase", 0.0) * 100, 2),
+                                        step=0.5,
+                                    ),
+                                ],
+                                className="parameter-card",
                             ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Monthly Contribution"),
-                            dbc.Input(
-                                id="monthly-contribution",
-                                type="number",
-                                value=cash.get("monthly", 0.0),
-                                min=0,
-                                step=100,
+                            className="parameter-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    html.Span("Costs & Taxes", className="parameter-title"),
+                                    dbc.Label("TER (p.a. %)"),
+                                    dbc.Input(
+                                        id="ter",
+                                        type="number",
+                                        value=round(costs.get("ter_pa", 0.003) * 100, 3),
+                                        step=0.05,
+                                    ),
+                                    dbc.Label("Tax on Withdrawals (%)"),
+                                    dbc.Input(
+                                        id="tax-rate",
+                                        type="number",
+                                        value=round(costs.get("withholding_tax_rate", 0.25) * 100, 1),
+                                        step=1,
+                                        min=0,
+                                        max=100,
+                                    ),
+                                ],
+                                className="parameter-card",
                             ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Annual Increase (%)"),
-                            dbc.Input(
-                                id="annual-increase",
-                                type="number",
-                                value=round(cash.get("annual_increase", 0.0) * 100, 2),
-                                step=0.5,
+                            className="parameter-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    html.Span("Inflation", className="parameter-title"),
+                                    dbc.Label("Mean (p.a. %)"),
+                                    dbc.Input(
+                                        id="inflation-mean",
+                                        type="number",
+                                        value=round(inflation.get("mean_pa", 0.02) * 100, 2),
+                                        step=0.1,
+                                    ),
+                                    dbc.Label("Sigma (p.a. %)"),
+                                    dbc.Input(
+                                        id="inflation-sigma",
+                                        type="number",
+                                        value=round(inflation.get("sigma_pa", 0.01) * 100, 2),
+                                        step=0.1,
+                                        min=0,
+                                    ),
+                                    dbc.Label("Stochastic Inflation"),
+                                    dbc.Checklist(
+                                        options=[{"label": "Enabled", "value": "on"}],
+                                        value=["on"] if inflation.get("stochastic", True) else [],
+                                        id="inflation-stochastic",
+                                        switch=True,
+                                    ),
+                                ],
+                                className="parameter-card",
                             ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
-            ),
-            html.Hr(),
-            html.H3("Costs & Taxes", className="section-title mt-2 mb-2"),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("TER (p.a. %)"),
-                            dbc.Input(
-                                id="ter",
-                                type="number",
-                                value=round(costs.get("ter_pa", 0.003) * 100, 3),
-                                step=0.05,
+                            className="parameter-cell",
+                        ),
+                        dbc.Col(
+                            html.Div(
+                                [
+                                    html.Span("Risk", className="parameter-title"),
+                                    dbc.Label("Volatility Multiplier"),
+                                    dbc.Input(
+                                        id="volatility-multiplier",
+                                        type="number",
+                                        value=cfg.get("volatility_multiplier", 1.0),
+                                        min=0.1,
+                                        step=0.1,
+                                    ),
+                                ],
+                                className="parameter-card",
                             ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Tax on Withdrawals (%)"),
-                            dbc.Input(
-                                id="tax-rate",
-                                type="number",
-                                value=round(costs.get("withholding_tax_rate", 0.25) * 100, 1),
-                                step=1,
-                                min=0,
-                                max=100,
-                            ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
-            ),
-            html.Hr(),
-            html.H3("Inflation", className="section-title mt-2 mb-2"),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Mean (p.a. %)"),
-                            dbc.Input(
-                                id="inflation-mean",
-                                type="number",
-                                value=round(inflation.get("mean_pa", 0.02) * 100, 2),
-                                step=0.1,
-                            ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                    dbc.Col(
-                        [
-                            dbc.Label("Sigma (p.a. %)"),
-                            dbc.Input(
-                                id="inflation-sigma",
-                                type="number",
-                                value=round(inflation.get("sigma_pa", 0.01) * 100, 2),
-                                step=0.1,
-                                min=0,
-                            ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Stochastic Inflation"),
-                            dbc.Checklist(
-                                options=[{"label": "Enabled", "value": "on"}],
-                                value=["on"] if inflation.get("stochastic", True) else [],
-                                id="inflation-stochastic",
-                                switch=True,
-                            ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row align-items-center",
-            ),
-            html.Hr(),
-            html.H3("Risk", className="section-title mt-2 mb-2"),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            dbc.Label("Volatility Multiplier"),
-                            dbc.Input(
-                                id="volatility-multiplier",
-                                type="number",
-                                value=cfg.get("volatility_multiplier", 1.0),
-                                min=0.1,
-                                step=0.1,
-                            ),
-                        ],
-                        xs=12,
-                        sm=6,
-                        md=4,
-                        lg=2,
-                        xl=2,
-                    ),
-                ],
-                className="g-2 compact-row",
+                            className="parameter-cell",
+                        ),
+                    ],
+                    className="g-3 parameter-row align-items-start",
+                ),
+                className="parameter-row-wrapper",
             ),
         ],
         width=12,
@@ -409,7 +322,7 @@ def serve_layout() -> dbc.Container:
                         className="chart-panel neon-panel p-3 rounded-3",
                     ),
                 ],
-                className="g-3 layout-row",
+                className="g-3 layout-row align-items-stretch",
             ),
             dbc.Row(
                 [
@@ -458,7 +371,7 @@ def serve_layout() -> dbc.Container:
                         className="chart-panel neon-panel p-3 rounded-3",
                     ),
                 ],
-                className="g-3 layout-row",
+                className="g-3 layout-row align-items-stretch",
             ),
             dbc.Row(
                 [
