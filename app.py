@@ -9,7 +9,7 @@ from wealth_forecaster.ui.layout import serve_layout
 
 external_stylesheets = [dbc.themes.CYBORG]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-app.title = "Wealth Development Forecaster"
+app.title = "Timo's Wealth Forecaster"
 app.layout = serve_layout
 
 register_callbacks(app)
