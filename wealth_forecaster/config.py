@@ -12,7 +12,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
     "start_date": "2025-01",
     "cash": {
         "initial": 0.0,
-        "monthly": 0.0,
+        "monthly": 100.0,
         "annual_increase": 0.0,
         "pauses": [["2030-01", "2030-12"]],
         "events": [{"date": "2032-01", "new_monthly": 1500.0}],

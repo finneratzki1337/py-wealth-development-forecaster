@@ -1,10 +1,37 @@
 """Dash layout for the wealth forecaster."""
 from __future__ import annotations
 
+import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from ..config import default_config
+
+
+def _placeholder_figure(title: str) -> go.Figure:
+    fig = go.Figure()
+    fig.update_layout(
+        title=dict(
+            text=title,
+            font=dict(family="Courier New, monospace", size=20, color="#f9f871"),
+        ),
+        template="plotly_dark",
+        paper_bgcolor="#0d1026",
+        plot_bgcolor="#0d1026",
+        font=dict(family="Courier New, monospace", color="#f4f4f4"),
+        margin=dict(l=40, r=20, t=60, b=40),
+    )
+    fig.add_annotation(
+        text="Press Run Simulation to generate results",
+        showarrow=False,
+        font=dict(size=16, family="Courier New, monospace", color="#f4f4f4"),
+        align="center",
+        x=0.5,
+        y=0.5,
+        xref="paper",
+        yref="paper",
+    )
+    return fig
 
 
 def build_controls(cfg: dict) -> dbc.Col:
@@ -14,6 +41,36 @@ def build_controls(cfg: dict) -> dbc.Col:
 
     return dbc.Col(
         [
+            html.Div(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.Button(
+                                    "Run Simulation",
+                                    id="run-button",
+                                    color="primary",
+                                    size="sm",
+                                    className="w-100 neon-button primary-button",
+                                ),
+                                md=6,
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    "Download XLSX",
+                                    id="export-button",
+                                    color="secondary",
+                                    size="sm",
+                                    className="w-100 neon-button secondary-button",
+                                ),
+                                md=6,
+                            ),
+                        ],
+                        className="g-2 button-row",
+                    ),
+                ],
+                className="mb-3",
+            ),
             html.H2("Simulation Settings", className="panel-title mb-3 neon-accent"),
             dbc.Row(
                 [
@@ -209,22 +266,6 @@ def build_controls(cfg: dict) -> dbc.Col:
                 ],
                 className="g-2 compact-row",
             ),
-            html.Div(
-                dbc.Button(
-                    "Run Simulation",
-                    id="run-button",
-                    color="primary",
-                    size="sm",
-                    className="mt-3 w-100 neon-button primary-button",
-                )
-            ),
-            dbc.Button(
-                "Download XLSX",
-                id="export-button",
-                color="secondary",
-                size="sm",
-                className="mt-2 w-100 neon-button secondary-button",
-            ),
         ],
         md=4,
         className="control-panel neon-panel p-3 rounded-3 h-100",
@@ -260,6 +301,9 @@ def serve_layout() -> dbc.Container:
                                                 config={"displayModeBar": False},
                                                 className="neon-graph",
                                                 style={"height": "320px"},
+                                                figure=_placeholder_figure(
+                                                    "Nominal Wealth Development"
+                                                ),
                                             ),
                                         ),
                                         md=12,
@@ -274,6 +318,9 @@ def serve_layout() -> dbc.Container:
                                                 config={"displayModeBar": False},
                                                 className="neon-graph",
                                                 style={"height": "320px"},
+                                                figure=_placeholder_figure(
+                                                    "Real Wealth Development"
+                                                ),
                                             ),
                                         ),
                                         md=12,
