@@ -1,15 +1,13 @@
-"""Tests for metrics aggregation utilities."""
-from __future__ import annotations
-
 import math
 
 import numpy as np
 import pandas as pd
 
 from wealth_forecaster import metrics
+from wealth_forecaster.metrics import _geometric_mean
 
 
-def _geometric_mean(values: list[float]) -> float:
+def _geometric_mean_reference(values: list[float]) -> float:
     if not values:
         return 0.0
     product = np.prod([1 + v for v in values])
@@ -58,8 +56,8 @@ def test_estimate_rates_handles_multiple_scenarios_independently() -> None:
 
     monthly_return, real_monthly = metrics._estimate_rates(df)
 
-    expected_return = _geometric_mean(return_rates)
-    expected_inflation = _geometric_mean(inflation_rates)
+    expected_return = _geometric_mean_reference(return_rates)
+    expected_inflation = _geometric_mean_reference(inflation_rates)
     expected_real = ((1 + expected_return) / (1 + expected_inflation)) - 1
 
     assert math.isclose(monthly_return, expected_return, rel_tol=1e-12)
@@ -71,3 +69,13 @@ def test_estimate_rates_empty_frame() -> None:
     monthly_return, real_monthly = metrics._estimate_rates(df)
     assert monthly_return == 0.0
     assert real_monthly == 0.0
+
+
+def test_geometric_mean_large_sample_remains_finite() -> None:
+    # 30 years of monthly returns across 500 runs mirrors the scale used in the
+    # UI.  The geometric mean should remain accurate and finite even for large
+    # sample sizes.
+    monthly_returns = np.full(30 * 12 * 500, 0.01)
+    result = _geometric_mean(monthly_returns)
+    assert np.isfinite(result)
+    assert np.isclose(result, 0.01)
