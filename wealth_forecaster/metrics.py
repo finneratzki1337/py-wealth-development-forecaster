@@ -30,10 +30,26 @@ def _mean_inflation(last_cpi: pd.Series) -> float:
 def _estimate_rates(df: pd.DataFrame) -> tuple[float, float]:
     monthly_returns: list[float] = []
     monthly_inflation: list[float] = []
-    for _run_id, group in df.sort_values("date").groupby("run_id"):
+
+    if df.empty:
+        return 0.0, 0.0
+
+    group_cols: list[str] = ["run_id"]
+    if "scenario" in df.columns:
+        group_cols = ["scenario", "run_id"]
+
+    sort_cols = [col for col in group_cols if col in df.columns]
+    sort_cols.append("date")
+    df_sorted = df.sort_values(sort_cols)
+
+    for _key, group in df_sorted.groupby(group_cols):
+        if group.empty:
+            continue
         tail = group.tail(min(60, len(group)))
-        monthly_returns.extend(tail["r_net"].tolist())
-        inflation_series = tail["cpi_cum"].pct_change().dropna().tolist()
+        monthly_returns.extend(tail["r_net"].astype(float).tolist())
+        inflation_series = (
+            tail["cpi_cum"].astype(float).pct_change().dropna().tolist()
+        )
         monthly_inflation.extend(inflation_series)
 
     monthly_return = _geometric_mean(monthly_returns)
