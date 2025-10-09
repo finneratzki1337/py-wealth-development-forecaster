@@ -650,6 +650,16 @@ def register_callbacks(app):
         if df_all.empty:
             agg = {"scenarios": {}, "overall": {}}
         else:
+            # Ensure all numeric columns are proper dtype before aggregation
+            numeric_cols = ["value_nom", "value_real", "contrib_cum", "cpi_cum", "r_net"]
+            for col in numeric_cols:
+                if col in df_all.columns:
+                    df_all[col] = pd.to_numeric(df_all[col], errors="coerce")
+            int_cols = ["run_id", "seed_used"]
+            for col in int_cols:
+                if col in df_all.columns:
+                    df_all[col] = pd.to_numeric(df_all[col], errors="coerce").astype(int)
+            
             agg = aggregate(
                 df_all,
                 cfg["costs_taxes"]["withholding_tax_rate"],
@@ -667,6 +677,16 @@ def register_callbacks(app):
         if not df_all.empty:
             df_export = df_all.copy()
             df_export["date"] = df_export["date"].dt.strftime("%Y-%m-%d")
+            # Ensure numeric columns are explicitly float type before JSON serialization
+            numeric_cols = ["value_nom", "value_real", "contrib_cum", "cpi_cum", "r_net"]
+            for col in numeric_cols:
+                if col in df_export.columns:
+                    df_export[col] = df_export[col].astype(float)
+            # Ensure integer columns
+            int_cols = ["run_id", "seed_used"]
+            for col in int_cols:
+                if col in df_export.columns:
+                    df_export[col] = df_export[col].astype(int)
             paths = df_export.to_dict("records")
         else:
             paths = []
@@ -728,6 +748,11 @@ def register_callbacks(app):
         if paths:
             df = pd.DataFrame(paths)
             df["date"] = pd.to_datetime(df["date"])
+            # Ensure numeric columns are converted properly after JSON deserialization
+            numeric_cols = ["value_nom", "value_real", "run_id", "seed_used", "contrib_cum", "cpi_cum", "r_net"]
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
         else:
             df = pd.DataFrame()
         fig_nom = _make_figure(df, "value_nom", "Nominal Wealth Development")
