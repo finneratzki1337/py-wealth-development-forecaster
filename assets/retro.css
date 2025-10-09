@@ -150,6 +150,94 @@ body {
   position: relative;
 }
 
+.graph-with-widget {
+  position: relative;
+}
+
+.graph-highlight-widget {
+  position: absolute;
+  top: 1rem;
+  left: 1.15rem;
+  min-width: 190px;
+  background: rgba(8, 12, 32, 0.9);
+  border: 1px solid rgba(45, 226, 230, 0.45);
+  box-shadow: 0 0 12px rgba(45, 226, 230, 0.22);
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.graph-highlight-widget .widget-upper {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
+}
+
+.graph-highlight-widget .widget-upper span {
+  white-space: nowrap;
+}
+
+.graph-highlight-widget .widget-main-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-yellow);
+}
+
+.graph-highlight-widget .widget-main-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.graph-highlight-widget .widget-main-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(249, 248, 113, 0.5);
+  margin-top: 0.15rem;
+}
+
+.graph-highlight-widget .widget-cagr {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+  white-space: nowrap;
+}
+
+.graph-highlight-widget .widget-secondary-value {
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  margin-top: 0.3rem;
+  letter-spacing: 0.05em;
+}
+
+.graph-highlight-widget .widget-percentiles {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  margin-top: 0.35rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.graph-highlight-widget .widget-placeholder {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
 .graph-loading-wrapper .dash-spinner {
   position: absolute;
   top: 0.75rem;
