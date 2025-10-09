@@ -154,13 +154,23 @@ def aggregate(df_paths: pd.DataFrame, tax: float, withdraw_params: Dict) -> Dict
         monthly_nom_ann = (1 + r_nom_ann) ** (1 / 12) - 1
         monthly_real_ann = (1 + r_real_ann) ** (1 / 12) - 1
 
-        perp_nominal = end_nom.to_numpy() * monthly_nom_perp
-        perp_real = end_real.to_numpy() * monthly_real_perp
+        perp_nominal = np.array(
+            [
+                _payment_perpetuity(float(val), float(monthly_nom_perp))
+                for val in end_nom
+            ]
+        )
+        perp_real = np.array(
+            [
+                _payment_perpetuity(float(val), float(monthly_real_perp))
+                for val in end_real
+            ]
+        )
         ann_nominal = np.array(
-            [_payment_annuity(val, monthly_nom_ann, ann_months) for val in end_nom]
+            [_payment_annuity(float(val), float(monthly_nom_ann), ann_months) for val in end_nom]
         )
         ann_real = np.array(
-            [_payment_annuity(val, monthly_real_ann, ann_months) for val in end_real]
+            [_payment_annuity(float(val), float(monthly_real_ann), ann_months) for val in end_real]
         )
 
         stats = pd.DataFrame(
