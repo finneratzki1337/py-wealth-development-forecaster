@@ -150,24 +150,25 @@ body {
   position: relative;
 }
 
-.graph-with-widget {
-  position: relative;
-}
-
 .graph-highlight-widget {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.9rem;
-  min-width: 160px;
-  max-width: 200px;
   background: rgba(8, 12, 32, 0.9);
   border: 1px solid rgba(45, 226, 230, 0.45);
   box-shadow: 0 0 10px rgba(45, 226, 230, 0.2);
   border-radius: 0.6rem;
-  padding: 0.5rem 0.6rem;
+  padding: 0.5rem 0.75rem;
   backdrop-filter: blur(6px);
+}
+
+.graph-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.graph-section .graph-highlight-widget {
+  width: 100%;
   pointer-events: none;
-  z-index: 2;
 }
 
 .graph-highlight-widget .widget-upper {
@@ -229,6 +230,21 @@ body {
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.06em;
+}
+
+.graph-highlight-widget .widget-cagr-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin-top: 0.4rem;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.graph-highlight-widget .widget-cagr-list span {
+  white-space: nowrap;
 }
 
 .graph-highlight-widget .widget-placeholder {
@@ -394,6 +410,53 @@ body {
   color: #ffffff !important;
   border-color: rgba(79, 99, 255, 0.3) !important;
   padding: 0.6rem 0.75rem;
+}
+
+.growth-accordion .accordion-item {
+  background: rgba(13, 16, 38, 0.85);
+  border: 1px solid rgba(79, 99, 255, 0.35);
+  color: #f4f4f4;
+}
+
+.growth-accordion .accordion-button {
+  background: rgba(249, 248, 113, 0.18);
+  color: var(--accent-yellow);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.growth-accordion .accordion-button:not(.collapsed) {
+  box-shadow: inset 0 -1px 0 rgba(249, 248, 113, 0.45);
+}
+
+.growth-table thead th {
+  background: rgba(15, 20, 45, 0.95);
+  color: var(--accent-cyan);
+  border-color: rgba(79, 99, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(45, 226, 230, 0.5);
+  padding: 0.65rem;
+}
+
+.growth-table tbody td,
+.growth-table tbody th {
+  background: rgba(13, 18, 40, 0.85);
+  color: #ffffff;
+  border-color: rgba(79, 99, 255, 0.3);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.growth-table tbody td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.growth-table tbody tr:nth-child(even) td,
+.growth-table tbody tr:nth-child(even) th {
+  background: rgba(10, 14, 32, 0.85);
 }
 
 .alert.neon-warning {

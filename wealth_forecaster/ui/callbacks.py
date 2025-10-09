@@ -91,7 +91,8 @@ def _build_highlight_widget(
     moderate = scenarios.get("moderate", {}) if isinstance(scenarios, dict) else {}
     if not isinstance(moderate, dict) or not moderate:
         return html.Div(
-            "Run the simulation to see highlights.", className="widget-placeholder"
+            "Run the simulation to see highlights.",
+            className="widget-placeholder",
         )
 
     moderate_end = _get_percentiles(moderate, *value_path)
@@ -113,12 +114,32 @@ def _build_highlight_widget(
     cagr_value = _compute_cagr(moderate_end["p50"], deposits_total, horizon_years)
 
     main_row_children = [
-        html.Span(_format_currency(moderate_end["p50"]), className="widget-main-value")
+        html.Span(
+            _format_currency(moderate_end["p50"]), className="widget-main-value"
+        )
     ]
     if cagr_value is not None:
         main_row_children.append(
             html.Span(f"{cagr_value * 100:.1f}% CAGR", className="widget-cagr")
         )
+
+    cagr_rows = []
+    for scenario_id, label in [
+        ("optimistic", "Opt"),
+        ("moderate", "Mod"),
+        ("pessimistic", "Pes"),
+    ]:
+        scenario_metrics = scenarios.get(scenario_id, {}) if isinstance(scenarios, dict) else {}
+        if not isinstance(scenario_metrics, dict) or not scenario_metrics:
+            continue
+        deposits = float(scenario_metrics.get("deposits_total", 0.0) or 0.0)
+        end_stats = _get_percentiles(scenario_metrics, *value_path)
+        cagr_val = _compute_cagr(end_stats["p50"], deposits, horizon_years)
+        if cagr_val is None:
+            text = f"{label} CAGR: —"
+        else:
+            text = f"{label} CAGR: {cagr_val * 100:.1f}%"
+        cagr_rows.append(html.Span(text))
 
     return html.Div(
         [
@@ -154,6 +175,7 @@ def _build_highlight_widget(
                 ],
                 className="widget-percentiles",
             ),
+            html.Div(cagr_rows, className="widget-cagr-list") if cagr_rows else None,
         ]
     )
 
@@ -432,6 +454,83 @@ def _build_scenario_details(agg: Dict) -> html.Component:
     return dbc.Accordion(items, always_open=True, start_collapsed=False, className="scenario-accordion")
 
 
+def _build_growth_rates_table(df: pd.DataFrame) -> html.Component:
+    def _placeholder() -> html.Component:
+        placeholder = html.Div(
+            "Run the simulation to view yearly growth rates.",
+            className="details-placeholder",
+        )
+        return dbc.Accordion(
+            [
+                dbc.AccordionItem(
+                    placeholder,
+                    title="Average YoY Growth (%)",
+                )
+            ],
+            start_collapsed=True,
+            className="growth-accordion",
+        )
+
+    if df.empty:
+        return _placeholder()
+
+    df_sorted = df.sort_values(["scenario", "run_id", "date"])
+    df_sorted["year"] = df_sorted["date"].dt.year
+    yearly = (
+        df_sorted.groupby(["scenario", "run_id", "year"], as_index=False)
+        .agg(value_nom=("value_nom", "last"))
+    )
+
+    if yearly.empty:
+        return _placeholder()
+
+    yearly["growth"] = yearly.groupby(["scenario", "run_id"])["value_nom"].pct_change()
+    growth = (
+        yearly.groupby(["scenario", "year"], as_index=False)
+        ["growth"].mean()
+    )
+
+    if growth.empty:
+        return _placeholder()
+
+    pivot = (
+        growth.pivot(index="year", columns="scenario", values="growth")
+        .sort_index()
+    )
+    scenario_order = ["optimistic", "moderate", "pessimistic"]
+    header_cells = [html.Th("Year")] + [html.Th(s.title()) for s in scenario_order]
+    rows = []
+    for year in pivot.index:
+        row_cells = [html.Th(str(int(year)))]
+        for scenario in scenario_order:
+            value = pivot.loc[year, scenario] if scenario in pivot.columns else float("nan")
+            if pd.isna(value):
+                display = "—"
+            else:
+                display = f"{value * 100:.2f}%"
+            row_cells.append(html.Td(display))
+        rows.append(html.Tr(row_cells))
+
+    table = dbc.Table(
+        [html.Thead(html.Tr(header_cells)), html.Tbody(rows)],
+        bordered=True,
+        hover=True,
+        responsive=True,
+        className="table-sm table-dark growth-table",
+    )
+
+    return dbc.Accordion(
+        [
+            dbc.AccordionItem(
+                table,
+                title="Average YoY Growth (%)",
+            )
+        ],
+        start_collapsed=True,
+        className="growth-accordion",
+    )
+
+
 def register_callbacks(app):
     @app.callback(
         Output("config-store", "data"),
@@ -537,6 +636,7 @@ def register_callbacks(app):
         Output("scenario-details", "children"),
         Output("nominal-widget", "children"),
         Output("real-widget", "children"),
+        Output("growth-rates", "children"),
         Input("results-store", "data"),
     )
     def update_outputs(data):
@@ -562,6 +662,7 @@ def register_callbacks(app):
                 "Moderate median real end",
                 "Perpetual net income (real)",
             )
+            growth_placeholder = _build_growth_rates_table(pd.DataFrame())
             return (
                 empty_fig,
                 empty_fig,
@@ -570,6 +671,7 @@ def register_callbacks(app):
                 details_placeholder,
                 nominal_placeholder,
                 real_placeholder,
+                growth_placeholder,
             )
         paths = data.get("paths", [])
         if paths:
@@ -581,6 +683,7 @@ def register_callbacks(app):
         fig_real = _make_figure(df, "value_real", "Real Wealth Development")
         table_children = _build_summary_table(data.get("agg", {}))
         details = _build_scenario_details(data.get("agg", {}))
+        growth_rates = _build_growth_rates_table(df)
         agg = data.get("agg", {})
         cfg = data.get("config")
         widget_nominal = _build_highlight_widget(
@@ -623,6 +726,7 @@ def register_callbacks(app):
             details,
             widget_nominal,
             widget_real,
+            growth_rates,
         )
 
     @app.callback(

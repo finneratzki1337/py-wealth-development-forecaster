@@ -314,6 +314,14 @@ def serve_layout() -> dbc.Container:
                                     dbc.Col(
                                         html.Div(
                                             [
+                                                html.Div(
+                                                    id="nominal-widget",
+                                                    className="graph-highlight-widget",
+                                                    children=html.Div(
+                                                        "Run the simulation to see highlights.",
+                                                        className="widget-placeholder",
+                                                    ),
+                                                ),
                                                 dcc.Loading(
                                                     id="nominal-loading",
                                                     type="default",
@@ -328,22 +336,22 @@ def serve_layout() -> dbc.Container:
                                                         ),
                                                     ),
                                                 ),
-                                                html.Div(
-                                                    id="nominal-widget",
-                                                    className="graph-highlight-widget",
-                                                    children=html.Div(
-                                                        "Run the simulation to see highlights.",
-                                                        className="widget-placeholder",
-                                                    ),
-                                                ),
                                             ],
-                                            className="graph-with-widget",
+                                            className="graph-section",
                                         ),
                                         md=12,
                                     ),
                                     dbc.Col(
                                         html.Div(
                                             [
+                                                html.Div(
+                                                    id="real-widget",
+                                                    className="graph-highlight-widget",
+                                                    children=html.Div(
+                                                        "Run the simulation to see highlights.",
+                                                        className="widget-placeholder",
+                                                    ),
+                                                ),
                                                 dcc.Loading(
                                                     id="real-loading",
                                                     type="default",
@@ -358,16 +366,8 @@ def serve_layout() -> dbc.Container:
                                                         ),
                                                     ),
                                                 ),
-                                                html.Div(
-                                                    id="real-widget",
-                                                    className="graph-highlight-widget",
-                                                    children=html.Div(
-                                                        "Run the simulation to see highlights.",
-                                                        className="widget-placeholder",
-                                                    ),
-                                                ),
                                             ],
-                                            className="graph-with-widget",
+                                            className="graph-section",
                                         ),
                                         md=12,
                                     ),
@@ -383,6 +383,11 @@ def serve_layout() -> dbc.Container:
                             ),
                             html.H3("Scenario Details", className="mt-4 section-title"),
                             html.Div(id="scenario-details"),
+                            html.H3(
+                                "Average Yearly Growth Rates",
+                                className="mt-4 section-title",
+                            ),
+                            html.Div(id="growth-rates"),
                         ],
                         md=8,
                         className="graph-panel neon-panel p-3 rounded-3 h-100",
