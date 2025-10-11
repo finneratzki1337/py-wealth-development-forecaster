@@ -41,3 +41,11 @@ docker run --rm -p 8050:8050 wealth-forecaster
 ```
 
 The app will be available at [http://127.0.0.1:8050](http://127.0.0.1:8050).
+
+Alternatively, use Docker Compose to build and start the service in one step:
+
+```bash
+docker compose up --build
+```
+
+Stop the service with `docker compose down`. The application will be exposed on port 8050 by default.
